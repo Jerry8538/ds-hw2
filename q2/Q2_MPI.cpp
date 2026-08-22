@@ -1,5 +1,6 @@
 #include<iostream>
 #include<vector>
+#include<fstream>
 using namespace std;
 
 // helper functions
@@ -46,16 +47,18 @@ vector<long long> worker_process(int m, int p, int num_pairs, const vector<long 
 
 // currently my main function is the master process/ node as of now, will need to make it rank 0 for the MPI part
 int main(int argc, char** argv){
+    string filename = "in";
+    ifstream inpFile(filename);
     int m, n, p;
 
-    cout << "enter rows of matrix A : " << endl;
-    cin >> m;
+    // cout << "enter rows of matrix A : " << endl;
+    inpFile >> m;
 
-    cout << "enter cols of matrix A == rows of matrix  B : " << endl;
-    cin >> n;
+    // cout << "enter cols of matrix A == rows of matrix  B : " << endl;
+    inpFile >> n;
 
-    cout << "enter cols of matrix B : " << endl;
-    cin >> p;
+    // cout << "enter cols of matrix B : " << endl;
+    inpFile >> p;
 
     // why are we storing in 1d array and not in the usual 2d array ??
     // because the mpi commands responsible for sending data need contiguous chunks, but the 2d vector does not store all the rows contiguously
@@ -63,10 +66,10 @@ int main(int argc, char** argv){
     vector<long long> matrixB(n * p);
 
     // storing matrix in column major, because we need to send the columns of A in contiguous manner
-    cout << "enter elements of matrix A : " << endl;
+    // cout << "enter elements of matrix A : " << endl;
     for(int i = 0; i < m; i++){
         for(int j = 0; j < n; j++){
-            long long x; cin >> x;
+            long long x; inpFile >> x;
 
             // to find column major index we do, current column *
             int col_maj_index = (j * m) + i; // j * m gives us the 0th element address of the jth column then we add i to get address of the ith element
@@ -75,15 +78,15 @@ int main(int argc, char** argv){
     }
 
     // storing the elements of B in row major order
-    cout << "enter elements of matrix B : " << endl;
+    // cout << "enter elements of matrix B : " << endl;
     for(int i = 0; i < n * p; i++){
-        long long x; cin >> x;
+        long long x; inpFile >> x;
         matrixB[i] = x;
     }
 
-    cout << "Enter the number of processes to simulate : " << endl;
+    // cout << "Enter the number of processes to simulate : " << endl;
     int P; // number of proceses
-    cin >> P;
+    inpFile >> P;
 
     int remainder = n % P;
     int min_pairs_to_all = n / P; // each distributed process will have atleast min_pairs_to_all pairs
