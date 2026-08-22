@@ -166,4 +166,5 @@ int main(int argc, char** argv){
     } else {
         worker_process(m, p);
     }
+    MPI_Finalize();
 }
