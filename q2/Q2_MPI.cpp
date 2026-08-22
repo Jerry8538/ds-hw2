@@ -31,7 +31,7 @@ void printSquareMatrix(const vector<long long>& matrix, int rows, int cols){
     }
 }
 
-void master_process(int m, int n, int p, int P, ifstream inpFile) {
+void master_process(int m, int n, int p, int P, ifstream &inpFile) {
     // why are we storing in 1d array and not in the usual 2d array ??
     // because the mpi commands responsible for sending data need contiguous chunks, but the 2d vector does not store all the rows contiguously
     vector<long long> matrixA(m * n);
@@ -68,8 +68,8 @@ void master_process(int m, int n, int p, int P, ifstream inpFile) {
     }
 
     // send each process its num_pairs
-    int temp;
-    MPI_Scatter(to_send, 1, MPI_INT, &temp, 0, MPI_INT, 0, MPI_COMM_WORLD);
+    int temp; // receives useless data
+    MPI_Scatter(to_send.data(), 1, MPI_INT, &temp, 0, MPI_INT, 0, MPI_COMM_WORLD);
 
     /*
     vector<int> starting_point_A(P); vector<int> chunk_size_A(P);
@@ -119,6 +119,7 @@ void worker_process(int m, int p){
     // receiving data from master
     int num_pairs;
     MPI_Scatter(NULL, 0, MPI_INT, &num_pairs, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    cout << num_pairs;
 
     /*
     vector<long long> column_A(m*num_pairs);
@@ -154,8 +155,10 @@ void worker_process(int m, int p){
 
 // currently my main function is the master process/ node as of now, will need to make it rank 0 for the MPI part
 int main(int argc, char** argv){
-    ifstream inpFile("in");
+    ifstream inpFile("~/cs3401.49/ds-hw2/q2/in");
+    if (inpFile.eof()) cout << "WHAT THE FUCK";
     int m, n, p; inpFile >> m >> n >> p;
+    cout << m << n << p;
 
     MPI_Init(NULL, NULL);
     int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);

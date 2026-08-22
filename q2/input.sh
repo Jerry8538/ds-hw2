@@ -1,3 +1,6 @@
+# clear in
+echo "" > in
+
 # dimensions
 m=$(($RANDOM%10+1))
 n=$(($RANDOM%10+1))

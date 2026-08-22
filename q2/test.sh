@@ -2,11 +2,10 @@
 #SBATCH --job-name=mpi-test
 #SBATCH --ntasks=3
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=4G
 #SBATCH --time=02:00:00
-#SBATCH --output=benchmark_%j.log
-#SBATCH --error=benchmark_%j.err
+#SBATCH --output=%j.log
+#SBATCH --error=%j.err
 #SBATCH --partition=debug
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=yash.khator@students.iiit.ac.in
