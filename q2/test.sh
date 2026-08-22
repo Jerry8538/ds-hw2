@@ -30,4 +30,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# create test input
+bash input.sh
+
 mpirun -n 1 a.out
