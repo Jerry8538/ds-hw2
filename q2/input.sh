@@ -20,4 +20,5 @@ for _ in $(seq 1 $n); do
 done
 printf "\n" >> in
 
-printf "$(($RANDOM%8+1))\n" >> in
+printf "3\n" >> in
+#printf "$(($RANDOM%8+1))\n" >> in

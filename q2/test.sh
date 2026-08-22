@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=mpi-test
+#SBATCH --ntasks=3
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=4G
 #SBATCH --time=02:00:00
@@ -33,4 +33,4 @@ fi
 # create test input
 bash input.sh
 
-mpirun -n 1 a.out
+mpirun -n 3 a.out
