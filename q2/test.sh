@@ -6,12 +6,13 @@
 #SBATCH --time=02:00:00
 #SBATCH --output=%j.log
 #SBATCH --error=%j.err
-#SBATCH --partition=debug
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=yash.khator@students.iiit.ac.in
+#SBATCH -D /home/cs3401.49/ds-hw2/q2
 
 # Load necessary modules
-module load hpcx-2.7.0/hpcx-ompi
+# module load hpcx-2.7.0/hpcx-ompi TODO FUCKER DOESNT GET PAST INIT
+module load openmpi/4.1.5
 
 echo "========================================="
 echo "SLURM Job ID: $SLURM_JOB_ID"
@@ -32,4 +33,5 @@ fi
 # create test input
 bash input.sh
 
-mpirun -n 3 a.out
+# openmpi figures out number of processes
+mpirun a.out

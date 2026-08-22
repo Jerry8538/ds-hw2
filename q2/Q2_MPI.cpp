@@ -155,10 +155,9 @@ void worker_process(int m, int p){
 
 // currently my main function is the master process/ node as of now, will need to make it rank 0 for the MPI part
 int main(int argc, char** argv){
-    ifstream inpFile("~/cs3401.49/ds-hw2/q2/in");
-    if (inpFile.eof()) cout << "WHAT THE FUCK";
+    ifstream inpFile("in");
     int m, n, p; inpFile >> m >> n >> p;
-    cout << m << n << p;
+    cout << m << n << p << endl;
 
     MPI_Init(NULL, NULL);
     int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
