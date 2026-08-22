@@ -31,7 +31,7 @@ void printSquareMatrix(const vector<long long>& matrix, int rows, int cols){
     }
 }
 
-void master_process(int m, int n, int p, int P) {
+void master_process(int m, int n, int p, int P, ifstream inpFile) {
     // why are we storing in 1d array and not in the usual 2d array ??
     // because the mpi commands responsible for sending data need contiguous chunks, but the 2d vector does not store all the rows contiguously
     vector<long long> matrixA(m * n);
@@ -68,7 +68,7 @@ void master_process(int m, int n, int p, int P) {
     }
 
     // send each process its num_pairs
-    int _temp;
+    int temp;
     MPI_Scatter(to_send, 1, MPI_INT, &temp, 0, MPI_INT, 0, MPI_COMM_WORLD);
 
     /*
@@ -162,7 +162,7 @@ int main(int argc, char** argv){
 
     if (rank == 0) {
         int size; MPI_Comm_size(MPI_COMM_WORLD, &size);
-        master_process(m, n, p, size-1);
+        master_process(m, n, p, size-1, inpFile);
     } else {
         worker_process(m, p);
     }
