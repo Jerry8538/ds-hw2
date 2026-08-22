@@ -1,7 +1,19 @@
+// TODO:
+// DONT SEND AND RECEIVE SEQUENTIALLY, USE BCAST/SCATTER AND REDUCE
+// WILL MPI_SUM WORK FOR VECTOR??
+// CHANGE P TO P-1
 #include<iostream>
 #include<vector>
 #include<fstream>
+#include<mpi.h>
 using namespace std;
+
+enum Tag {
+    NUM_PAIRS,
+    COL,
+    ROW,
+    PARTIAL_MATRIX
+};
 
 // helper functions
 
@@ -19,47 +31,7 @@ void printSquareMatrix(const vector<long long>& matrix, int rows, int cols){
     }
 }
 
-// worker process :
-// in worker process we take some pairs of columns of A and rows of B and then find their corresponding partial matrix C and returns it to the master
-vector<long long> worker_process(int m, int p, int num_pairs, const vector<long long>& column_A, const vector<long long>& row_B){
-    // here m is the rows of A, p is the columns of B and so the partial matrix C will be m x p
-    // int num_pairs is the number of pairs assigned to this worker process
-    // column_A is/are the columns that we need to process for this particular worker process and row_B is/are the rows that we need for this worker process
-    vector<long long> partial_C(m*p, 0);
-    int pairs_processed = 0;
-    // pairs_processes also gives us the current column and row that we are processing
-    while(pairs_processed < num_pairs){
-        // pairs processed gives us the current column and row that we are looking at
-        for(int i = 0; i < m; i++){
-            // traversing the column elements of the current column
-            for(int j = 0; j < p; j++){
-                int a_ind = pairs_processed * m + i; // why pairs_processed * m + i ?? because pairs_processed * m gives us the 0th element of the current column of A and then we add i to get the current column element that we are looking at
-                int b_ind = pairs_processed * p + j; // same logic as above
-
-                partial_C[i * p + j] += column_A[a_ind] * row_B[b_ind]; // i * p + j, why ?? because this gives us the index in row major form
-            }
-        }
-        pairs_processed++;
-    }
-
-    return partial_C;
-}
-
-// currently my main function is the master process/ node as of now, will need to make it rank 0 for the MPI part
-int main(int argc, char** argv){
-    string filename = "in";
-    ifstream inpFile(filename);
-    int m, n, p;
-
-    // cout << "enter rows of matrix A : " << endl;
-    inpFile >> m;
-
-    // cout << "enter cols of matrix A == rows of matrix  B : " << endl;
-    inpFile >> n;
-
-    // cout << "enter cols of matrix B : " << endl;
-    inpFile >> p;
-
+void master_process(int m, int n, int p, int P) {
     // why are we storing in 1d array and not in the usual 2d array ??
     // because the mpi commands responsible for sending data need contiguous chunks, but the 2d vector does not store all the rows contiguously
     vector<long long> matrixA(m * n);
@@ -84,20 +56,22 @@ int main(int argc, char** argv){
         matrixB[i] = x;
     }
 
-    // cout << "Enter the number of processes to simulate : " << endl;
-    int P; // number of proceses
-    inpFile >> P;
-
     int remainder = n % P;
     int min_pairs_to_all = n / P; // each distributed process will have atleast min_pairs_to_all pairs
 
-    vector<int> to_send(P, min_pairs_to_all);
+    vector<int> to_send(P+1, min_pairs_to_all);
+    to_send[0] = 0;
 
-    for(int i = 0; i < to_send.size() && remainder > 0; i++){
+    for(int i = 1; i < to_send.size() && remainder > 0; i++){
         to_send[i]++; // assigning the remaining pairs that we are left with
         remainder--;
     }
 
+    // send each process its num_pairs
+    int _temp;
+    MPI_Scatter(to_send, 1, MPI_INT, &temp, 0, MPI_INT, 0, MPI_COMM_WORLD);
+
+    /*
     vector<int> starting_point_A(P); vector<int> chunk_size_A(P);
     vector<int> starting_point_B(P); vector<int> chunk_size_B(P);
 
@@ -136,5 +110,60 @@ int main(int argc, char** argv){
 
     cout << "the final product matrix C is : " << endl;
     printSquareMatrix(matrix_C, m, p);
-    return 0;
+    */
+}
+
+// worker process :
+// in worker process we take some pairs of columns of A and rows of B and then find their corresponding partial matrix C and returns it to the master
+void worker_process(int m, int p){
+    // receiving data from master
+    int num_pairs;
+    MPI_Scatter(NULL, 0, MPI_INT, &num_pairs, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    /*
+    vector<long long> column_A(m*num_pairs);
+    MPI_Recv(column_A, m*num_pairs, MPI_LONG_LONG, 0, COL, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+    vector<long long> row_B(p*num_pairs);
+    MPI_Recv(row_B, p*num_pairs, MPI_LONG_LONG, 0, ROW, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+    // here m is the rows of A, p is the columns of B and so the partial matrix C will be m x p
+    // int num_pairs is the number of pairs assigned to this worker process
+    // column_A is/are the columns that we need to process for this particular worker process and row_B is/are the rows that we need for this worker process
+
+    vector<long long> partial_C(m*p, 0);
+    int pairs_processed = 0;
+    // pairs_processes also gives us the current column and row that we are processing
+    while(pairs_processed < num_pairs){
+        // pairs processed gives us the current column and row that we are looking at
+        for(int i = 0; i < m; i++){
+            // traversing the column elements of the current column
+            for(int j = 0; j < p; j++){
+                int a_ind = pairs_processed * m + i; // why pairs_processed * m + i ?? because pairs_processed * m gives us the 0th element of the current column of A and then we add i to get the current column element that we are looking at
+                int b_ind = pairs_processed * p + j; // same logic as above
+
+                partial_C[i * p + j] += column_A[a_ind] * row_B[b_ind]; // i * p + j, why ?? because this gives us the index in row major form
+            }
+        }
+        pairs_processed++;
+    }
+
+    MPI_Send(partial_C, m*p, MPI_LONG_LONG, 0, PARTIAL_MATRIX, MPI_COMM_WORLD);
+    */
+}
+
+// currently my main function is the master process/ node as of now, will need to make it rank 0 for the MPI part
+int main(int argc, char** argv){
+    ifstream inpFile("in");
+    int m, n, p; inpFile >> m >> n >> p;
+
+    MPI_Init(NULL, NULL);
+    int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    if (rank == 0) {
+        int size; MPI_Comm_size(MPI_COMM_WORLD, &size);
+        master_process(m, n, p, size-1);
+    } else {
+        worker_process(m, p);
+    }
 }
