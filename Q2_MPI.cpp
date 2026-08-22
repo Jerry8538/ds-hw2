@@ -24,7 +24,7 @@ vector<long long> worker_process(int m, int p, int num_pairs, const vector<long 
     // here m is the rows of A, p is the columns of B and so the partial matrix C will be m x p
     // int num_pairs is the number of pairs assigned to this worker process
     // column_A is/are the columns that we need to process for this particular worker process and row_B is/are the rows that we need for this worker process
-    vector<long long> partial_C(m*p);
+    vector<long long> partial_C(m*p, 0);
     int pairs_processed = 0;
     // pairs_processes also gives us the current column and row that we are processing
     while(pairs_processed < num_pairs){
