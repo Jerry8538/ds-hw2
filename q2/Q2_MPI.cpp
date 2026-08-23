@@ -8,13 +8,6 @@
 #include<mpi.h>
 using namespace std;
 
-enum Tag {
-    NUM_PAIRS,
-    COL,
-    ROW,
-    PARTIAL_MATRIX
-};
-
 // helper functions
 
 // prints matrix in 2d form
@@ -68,26 +61,30 @@ void master_process(int m, int n, int p, int P, ifstream &inpFile) {
     }
 
     // send each process its num_pairs
-    int temp; // receives useless data
-    MPI_Scatter(to_send.data(), 1, MPI_INT, &temp, 0, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(to_send.data(), 1, MPI_INT, MPI_IN_PLACE, 0, MPI_INT, 0, MPI_COMM_WORLD);
 
-    /*
-    vector<int> starting_point_A(P); vector<int> chunk_size_A(P);
-    vector<int> starting_point_B(P); vector<int> chunk_size_B(P);
+    vector<int> starting_point_A(P+1); vector<int> chunk_size_A(P+1);
+    vector<int> starting_point_B(P+1); vector<int> chunk_size_B(P+1);
 
-    for(int i = 0; i < P; i++){
+    for(int i = 0; i <= P; i++){
         chunk_size_A[i] = to_send[i] * m; // 1 column of A has m elements
         chunk_size_B[i] = to_send[i] * p; // 1 row of B has p elements
 
-        if(i == 0){
-            starting_point_A[i] = 0;
-            starting_point_B[i] = 0;
-        }else{
-            starting_point_A[i] = starting_point_A[i - 1] + chunk_size_A[i - 1];
-            starting_point_B[i] = starting_point_B[i - 1] + chunk_size_B[i - 1];
-        }
+        starting_point_A[i] = starting_point_A[i - 1] + chunk_size_A[i - 1];
+        starting_point_B[i] = starting_point_B[i - 1] + chunk_size_B[i - 1];
     }
 
+    // send each process its columns of A
+    MPI_Scatterv(matrixA.data(), chunk_size_A.data(), starting_point_A.data(), MPI_LONG_LONG,
+                 MPI_IN_PLACE, 0, MPI_LONG_LONG,
+                 0, MPI_COMM_WORLD);
+
+    // send each process its rows of B
+    MPI_Scatterv(matrixB.data(), chunk_size_B.data(), starting_point_B.data(), MPI_LONG_LONG,
+            MPI_IN_PLACE, 0, MPI_LONG_LONG,
+            0, MPI_COMM_WORLD);
+
+    /*
     vector<long long> matrix_C(m * p, 0);
     for(int i = 0; i < to_send.size(); i++){
         cout << "Starting with distributed process rank : " << i << " pairs received : " << to_send[i] << endl;
@@ -121,12 +118,23 @@ void worker_process(int m, int p){
     MPI_Scatter(NULL, 0, MPI_INT, &num_pairs, 1, MPI_INT, 0, MPI_COMM_WORLD);
     cout << num_pairs;
 
-    /*
     vector<long long> column_A(m*num_pairs);
-    MPI_Recv(column_A, m*num_pairs, MPI_LONG_LONG, 0, COL, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Scatterv(NULL, 0, NULL, NULL, MPI_LONG_LONG,
+                 column_A.data(), m*num_pairs, MPI_LONG_LONG,
+                 0, MPI_COMM_WORLD);
+
+    for (auto i : column_A) cout << i << ' ';
+    cout << endl;
 
     vector<long long> row_B(p*num_pairs);
-    MPI_Recv(row_B, p*num_pairs, MPI_LONG_LONG, 0, ROW, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Scatterv(NULL, 0, NULL, NULL, MPI_LONG_LONG,
+                 column_A.data(), p*num_pairs, MPI_LONG_LONG,
+                 0, MPI_COMM_WORLD);
+
+    for (auto i : row_B) cout << i << ' ';
+    cout << endl;
+
+    /*
 
     // here m is the rows of A, p is the columns of B and so the partial matrix C will be m x p
     // int num_pairs is the number of pairs assigned to this worker process
