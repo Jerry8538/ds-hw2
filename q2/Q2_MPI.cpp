@@ -1,7 +1,3 @@
-// TODO:
-// DONT SEND AND RECEIVE SEQUENTIALLY, USE BCAST/SCATTER AND REDUCE
-// WILL MPI_SUM WORK FOR VECTOR??
-// CHANGE P TO P-1
 #include<iostream>
 #include<vector>
 #include<fstream>
@@ -31,7 +27,6 @@ void master_process(int m, int n, int p, int P, ifstream &inpFile) {
     vector<long long> matrixB(n * p);
 
     // storing matrix in column major, because we need to send the columns of A in contiguous manner
-    // cout << "enter elements of matrix A : " << endl;
     for(int i = 0; i < m; i++){
         for(int j = 0; j < n; j++){
             long long x; inpFile >> x;
@@ -43,10 +38,8 @@ void master_process(int m, int n, int p, int P, ifstream &inpFile) {
     }
 
     // storing the elements of B in row major order
-    // cout << "enter elements of matrix B : " << endl;
     for(int i = 0; i < n * p; i++){
-        long long x; inpFile >> x;
-        matrixB[i] = x;
+        inpFile >> matrixB[i];
     }
 
     int remainder = n % P;
@@ -85,10 +78,10 @@ void master_process(int m, int n, int p, int P, ifstream &inpFile) {
             0, MPI_COMM_WORLD);
 
     vector<long long> matrix_C(m * p, 0);
-    // When sequence is passed to MPI_Reduce, it applies op to each element
+    // NOTE: if array is passed to MPI_Reduce, it applies op to each element
     MPI_Reduce(MPI_IN_PLACE, matrix_C.data(), m*p, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
 
-    cout << "the final product matrix C is : " << endl;
+    cout << "the final product matrix C:\n";
     printSquareMatrix(matrix_C, m, p);
 }
 
@@ -98,7 +91,7 @@ void worker_process(int m, int p){
     // receiving data from master
     int num_pairs;
     MPI_Scatter(NULL, 0, MPI_INT, &num_pairs, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    cout << num_pairs;
+    cout << "my num_pairs: " << num_pairs << endl;
 
     vector<long long> column_A(m*num_pairs);
     MPI_Scatterv(NULL, NULL, NULL, MPI_LONG_LONG,
@@ -136,8 +129,11 @@ void worker_process(int m, int p){
         }
         pairs_processed++;
     }
+    cout << "my partial matrix:\n";
+    printSquareMatrix(partial_C, m, p);
 
-    MPI_Reduce(partial_C, NULL, m*p, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    // send partial matrix to be reduced in master
+    MPI_Reduce(partial_C.data(), NULL, m*p, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
 }
 
 int main(int argc, char** argv){
