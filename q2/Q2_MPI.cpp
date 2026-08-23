@@ -145,8 +145,9 @@ int main(int argc, char** argv){
     int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     int m, n, p;
+    ifstream inpFile;
     if (rank == 0) {
-        ifstream inpFile("in");
+        inpFile.open("in");
         inpFile >> m >> n >> p;
     }
     MPI_Bcast(&m, 1, MPI_INT, 0, MPI_COMM_WORLD);
