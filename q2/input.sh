@@ -1,5 +1,5 @@
 # clear in
-echo "" > in
+printf "" > in
 
 # dimensions
 m=$(($RANDOM%10+1))
