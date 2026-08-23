@@ -84,30 +84,12 @@ void master_process(int m, int n, int p, int P, ifstream &inpFile) {
             MPI_IN_PLACE, 0, MPI_LONG_LONG,
             0, MPI_COMM_WORLD);
 
-    /*
     vector<long long> matrix_C(m * p, 0);
-    for(int i = 0; i < to_send.size(); i++){
-        cout << "Starting with distributed process rank : " << i << " pairs received : " << to_send[i] << endl;
-        int to_send_current = to_send[i];
-        
-        // now i have to assign column a and row b
-        // what info do i have : starting point of each pair, chunk size for that pair
-        // mistake i had done here : had accidentaly added 1 to the end iterator, but there is no need, cause if start index = 0 and the chunk size is 6, then it will include [0, 5] so no need of that extra 1
-        vector<long long> column_A(matrixA.begin() + starting_point_A[i], matrixA.begin() + starting_point_A[i] + chunk_size_A[i]);
-        vector<long long> row_B(matrixB.begin() + starting_point_B[i], matrixB.begin() + starting_point_B[i] + chunk_size_B[i]);
-
-        vector<long long> partial_C = worker_process(m, p, to_send_current, column_A, row_B);
-
-        for(int k = 0; k < partial_C.size(); k++){
-            matrix_C[k] += partial_C[k];
-        }
-
-        cout << "received partial matrix from distributed process with rank : " << i << endl;
-    }
+    // When sequence is passed to MPI_Reduce, it applies op to each element
+    MPI_Reduce(MPI_IN_PLACE, matrix_C.data(), m*p, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
 
     cout << "the final product matrix C is : " << endl;
     printSquareMatrix(matrix_C, m, p);
-    */
 }
 
 // worker process :
@@ -119,7 +101,7 @@ void worker_process(int m, int p){
     cout << num_pairs;
 
     vector<long long> column_A(m*num_pairs);
-    MPI_Scatterv(NULL, 0, NULL, NULL, MPI_LONG_LONG,
+    MPI_Scatterv(NULL, NULL, NULL, MPI_LONG_LONG,
                  column_A.data(), m*num_pairs, MPI_LONG_LONG,
                  0, MPI_COMM_WORLD);
 
@@ -127,14 +109,12 @@ void worker_process(int m, int p){
     cout << endl;
 
     vector<long long> row_B(p*num_pairs);
-    MPI_Scatterv(NULL, 0, NULL, NULL, MPI_LONG_LONG,
-                 column_A.data(), p*num_pairs, MPI_LONG_LONG,
+    MPI_Scatterv(NULL, NULL, NULL, MPI_LONG_LONG,
+                 row_B.data(), p*num_pairs, MPI_LONG_LONG,
                  0, MPI_COMM_WORLD);
 
     for (auto i : row_B) cout << i << ' ';
     cout << endl;
-
-    /*
 
     // here m is the rows of A, p is the columns of B and so the partial matrix C will be m x p
     // int num_pairs is the number of pairs assigned to this worker process
@@ -157,18 +137,22 @@ void worker_process(int m, int p){
         pairs_processed++;
     }
 
-    MPI_Send(partial_C, m*p, MPI_LONG_LONG, 0, PARTIAL_MATRIX, MPI_COMM_WORLD);
-    */
+    MPI_Reduce(partial_C, NULL, m*p, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
 }
 
-// currently my main function is the master process/ node as of now, will need to make it rank 0 for the MPI part
 int main(int argc, char** argv){
-    ifstream inpFile("in");
-    int m, n, p; inpFile >> m >> n >> p;
-    cout << m << n << p << endl;
-
     MPI_Init(NULL, NULL);
     int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    int m, n, p;
+    if (rank == 0) {
+        ifstream inpFile("in");
+        inpFile >> m >> n >> p;
+    }
+    MPI_Bcast(&m, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&p, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    cout << "rank: " << rank << endl << m << ' ' << n << ' ' << p << endl;
 
     if (rank == 0) {
         int size; MPI_Comm_size(MPI_COMM_WORLD, &size);
