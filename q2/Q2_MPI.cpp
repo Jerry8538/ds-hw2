@@ -1,4 +1,5 @@
 #include<iostream>
+#include<iomanip>
 #include<vector>
 #include<fstream>
 #include<mpi.h>
@@ -176,6 +177,7 @@ int main(int argc, char** argv){
         cout << "Total Processes Used  : " << size << endl;
         cout << "Worker Processes Used : " << size - 1 << endl;
         cout << "Matrix Dimensions     : A(" << m << "x" << n << ") * B(" << n << "x" << p << ") = C(" << m << "x" << p << ")" << endl;
+        cout << fixed << setprecision(10);
         cout << "Time Taken            : " << (end_time - start_time) << " seconds" << endl;
         cout << "========================================" << endl;
     }
