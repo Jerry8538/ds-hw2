@@ -21,7 +21,8 @@ void printSquareMatrix(const vector<long long> &matrix, int rows, int cols) {
   }
 }
 
-void master_process(int m, int n, int p, int P, ifstream &inpFile) {
+void master_process(int m, int n, int p, int P, ifstream &inpFile,
+                    bool print_matrix = true) {
   // why are we storing in 1d array and not in the usual 2d array ??
   // because the mpi commands responsible for sending data need contiguous
   // chunks, but the 2d vector does not store all the rows contiguously
@@ -98,8 +99,12 @@ void master_process(int m, int n, int p, int P, ifstream &inpFile) {
   MPI_Reduce(MPI_IN_PLACE, matrix_C.data(), m * p, MPI_LONG_LONG, MPI_SUM, 0,
              MPI_COMM_WORLD);
 
-  cout << "the final product matrix C:\n";
-  printSquareMatrix(matrix_C, m, p);
+  if (print_matrix) {
+    cout << "the final product matrix C:\n";
+    printSquareMatrix(matrix_C, m, p);
+  } else {
+    cout << "(matrix output suppressed for large dimensions)\n";
+  }
 }
 
 // worker process :
@@ -189,7 +194,8 @@ int main(int argc, char **argv) {
   if (rank == 0) {
     int size;
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-    master_process(m, n, p, size - 1, inpFile);
+    bool print_matrix = (m < 1000 && n < 1000 && p < 1000);
+    master_process(m, n, p, size - 1, inpFile, print_matrix);
   } else {
     worker_process(m, p);
   }
