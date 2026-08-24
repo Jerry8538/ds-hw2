@@ -37,13 +37,14 @@ mkdir -p output
 # Process counts to test
 PROC_COUNTS=(2 3 5 9)
 
+
 # Helper: run mpirun with a given np and append result to output file
 run_test() {
     local np=$1
     local outfile=$2
 
     echo "--- np=$np ---" >> "$outfile"
-    { time mpirun -np $np --mca pml ob1 --mca osc ^ucx a.out; } >> "$outfile" 2>&1
+    { time mpirun -np $np --mca pml ob1 --mca btl self,tcp --mca osc ^ucx a.out; } >> "$outfile" 2>&1
     echo "" >> "$outfile"
 }
 

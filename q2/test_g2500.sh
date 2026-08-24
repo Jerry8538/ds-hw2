@@ -43,7 +43,7 @@ run_test() {
     local outfile=$2
 
     echo "--- np=$np ---" >> "$outfile"
-    { time mpirun -np $np --mca pml ob1 --mca osc ^ucx a.out; } >> "$outfile" 2>&1
+    { time mpirun -np $np --mca pml ob1 --mca btl self,tcp --mca osc ^ucx a.out; } >> "$outfile" 2>&1
     echo "" >> "$outfile"
 }
 
