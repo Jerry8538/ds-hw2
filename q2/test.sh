@@ -7,7 +7,7 @@
 #SBATCH --output=%j.log
 #SBATCH --error=%j.err
 #SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=yash.khator@students.iiit.ac.in
+#SBATCH --mail-user=tarun.rajai@students.iiit.ac.in
 #SBATCH -D /home/cs3401.49/ds-hw2/q2
 
 # Load necessary modules
@@ -33,5 +33,6 @@ fi
 # create test input
 bash input.sh
 
-# openmpi figures out number of processes
-mpirun a.out
+# this helps us measure the time taken by our program, but this also includes the time taken for OpenMPI network setup, spawning processes across diff cores, establishing network connections and finally closing down the connections at end. All this overhead is also included in this timing
+# by default the time command prints on stderr(fd 2) so we are redirecting to stdout(fd 1)
+{ time mpirun a.out; } > output.txt 2>&1

@@ -151,11 +151,34 @@ int main(int argc, char** argv){
     MPI_Bcast(&p, 1, MPI_INT, 0, MPI_COMM_WORLD);
     cout << "rank: " << rank << endl << m << ' ' << n << ' ' << p << endl;
 
+    // measuring the time for analysis purpose and for report creation
+    MPI_Barrier(MPI_COMM_WORLD);
+    double start_time = MPI_Wtime();
+    
     if (rank == 0) {
         int size; MPI_Comm_size(MPI_COMM_WORLD, &size);
         master_process(m, n, p, size-1, inpFile);
     } else {
         worker_process(m, p);
     }
+    
+    MPI_Barrier(MPI_COMM_WORLD);
+    double end_time = MPI_Wtime();
+
+    if (rank == 0) {
+        // measuring the time for analysis and report
+        int size; 
+        MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+        cout << "\n========================================" << endl;
+        cout << "          COMPUTATION LOG               " << endl;
+        cout << "========================================" << endl;
+        cout << "Total Processes Used  : " << size << endl;
+        cout << "Worker Processes Used : " << size - 1 << endl;
+        cout << "Matrix Dimensions     : A(" << m << "x" << n << ") * B(" << n << "x" << p << ") = C(" << m << "x" << p << ")" << endl;
+        cout << "Time Taken            : " << (end_time - start_time) << " seconds" << endl;
+        cout << "========================================" << endl;
+    }
+
     MPI_Finalize();
 }
