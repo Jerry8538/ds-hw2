@@ -50,7 +50,7 @@ void master(int v, int wrkrcount, ifstream &in) {
                  */
 }
 
-void worker() {
+void worker(int rank) {
     int v_i;
     MPI_Scatter(NULL, 0, MPI_INT,
                 &v_i, 1, MPI_INT,
@@ -78,7 +78,7 @@ int main() {
         in.open("in");
         in >> v;
     }
-    MPI_Bcast(&m, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&v, 1, MPI_INT, 0, MPI_COMM_WORLD);
     cout << "rank: " << rank << ' ' << v << endl;
 
     if (rank == 0) {
@@ -86,7 +86,7 @@ int main() {
         MPI_Comm_size(MPI_COMM_WORLD, &size);
         master(v, size-1, in);
     } else {
-        worker();
+        worker(rank);
     }
 
     MPI_Finalize();
