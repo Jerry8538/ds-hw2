@@ -1,10 +1,11 @@
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <mpi.h>
 using namespace std;
 #define ll long long
 
-void master(int v, int wrkrcount, istream &in) {
+void master(int v, int wrkrcount, ifstream &in) {
     // optimal to precompute the data to send, than to send repeatedly
 
     // input adjlist, and store number of nbrs, and offset for each worker
@@ -49,12 +50,12 @@ void master(int v, int wrkrcount, istream &in) {
                  */
 }
 
-void worker(int rank) {
+void worker() {
     int v_i;
     MPI_Scatter(NULL, 0, MPI_INT,
                 &v_i, 1, MPI_INT,
                 0, MPI_COMM_WORLD);
-    cout << "rank " << rank << " v " << v << endl;
+    cout << "rank " << rank << " v " << v_i << endl;
 
     vector<int> nbrcounts_i(v_i);
     MPI_Scatterv(NULL, NULL, NULL, MPI_INT,
@@ -85,7 +86,7 @@ int main() {
         MPI_Comm_size(MPI_COMM_WORLD, &size);
         master(v, size-1, in);
     } else {
-        worker(v);
+        worker();
     }
 
     MPI_Finalize();
