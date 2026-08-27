@@ -33,7 +33,7 @@ void master(int v, int wrkrcount, ifstream &in) {
                 0, MPI_COMM_WORLD);
 
     // 2. send neighbor counts for each
-    vector<int> nbrcount_starts(wrkrcount+1, 0);
+    vector<int> nbrcount_starts(wrkrcount+1, 0); // prefix sum of nbrcounts
     for (int i=1; i<=wrkrcount; i++) {
         nbrcount_starts[i] = nbrcount_starts[i-1] + nbrcounts[i-1];
     }
@@ -41,13 +41,31 @@ void master(int v, int wrkrcount, ifstream &in) {
                  MPI_IN_PLACE, 0, MPI_INT,
                  0, MPI_COMM_WORLD);
 
-    /* 3. send neighbors for each
-    vector<int> nbr_starts(wrkrcount+1, 0); // TODO calculate
-    vector<int> nbrcounts_counts(wrkrcount+1, 0); // TODO
-    MPI_Scatterv(adjlist.data(), nbrcounts_counts.data(), nbr_starts.data(), MPI_INT,
+    // 3. send neighbors for each
+
+    // calculate total number of neighbors to send to each worker
+    vector<int> allnbrcounts(wrkrcount+1, 0);
+    int curwrkr = 0;
+    int curwrkr_vcount = 0;
+    for (int nbrcount : nbrcounts) {
+        // nbrcount per vertex
+        if (curwrkr_vcount == vcounts[curwrkr]) {
+            // if current worker's nbrs added,
+            // move to next worker
+            curwrkr++;
+            curwrkr_vcount = 0;
+        }
+        allnbrcounts[curwrkr] += nbrcount;
+    }
+
+    vector<int> nbr_starts(wrkrcount+1, 0); // prefix of allnbrcounts
+    for (int i=1; i<=wrkrcount; i++) {
+        nbr_starts[i] = nbr_starts[i-1] + allnbrcounts[i-1];
+    }
+
+    MPI_Scatterv(adjlist.data(), allnbrcounts.data(), nbr_starts.data(), MPI_INT,
                  MPI_IN_PLACE, 0, MPI_INT,
                  0, MPI_COMM_WORLD);
-                 */
 }
 
 void worker(int rank) {
@@ -61,12 +79,29 @@ void worker(int rank) {
     MPI_Scatterv(NULL, NULL, NULL, MPI_INT,
                  nbrcounts_i.data(), v_i, MPI_INT,
                  0, MPI_COMM_WORLD);
+
+    int totalnbrcount = 0;
+    cout << "nbrcounts: ";
+    for (int i : nbrcounts_i) {
+        cout << i << ' ';
+        totalnbrcount += i;
+    }
+    cout << endl;
+
+    vector<int> nbrs(totalnbrcount);
+    MPI_Scatterv(NULL, NULL, NULL, MPI_INT,
+                 nbrs.data(), totalnbrcount, MPI_INT,
+                 0, MPI_COMM_WORLD);
+    cout << "nbrs: ";
+    for (int i : nbrs) cout << i << ' ';
+    cout << endl;
 }
 
 int main() {
     // n-1 rounds; each round involves sending your id to your neighbors
-    // method 1: send id directly to process with neighbor
-    // method 2: send (v, id) to master, and master reduces by grouping (v, id_i)
+    // before each round, master sends current labels to all
+    // method 1: set your neighbors' labels, then master reduces with MIN
+    // method 2: set your label from neighbors', then send only yours to master
     ifstream in;
 
     MPI_Init(NULL, NULL);
@@ -90,4 +125,4 @@ int main() {
     }
 
     MPI_Finalize();
-}
+
