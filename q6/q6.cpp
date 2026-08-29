@@ -36,11 +36,17 @@ void master(int v, int wrkrcount, ifstream &in) {
                 MPI_IN_PLACE, 0, MPI_INT,   // recv
                 0, MPI_COMM_WORLD);
 
-    // 2. send neighbor counts for each
     vector<int> nbrcount_starts(wrkrcount+1, 0); // prefix sum of vcounts
     for (int i=1; i<=wrkrcount; i++) {
         nbrcount_starts[i] = nbrcount_starts[i-1] + vcounts[i-1];
     }
+
+    // 2. send first vertex id for each
+    MPI_Scatter(nbrcount_starts.data(), 1, MPI_INT,
+                MPI_IN_PLACE, 0, MPI_INT,
+                0, MPI_COMM_WORLD);
+
+    // 3. send neighbor counts for each
     cout << "nbrcounts: ";
     for (int i : nbrcounts) cout << i << ' ';
     cout << endl;
@@ -49,8 +55,7 @@ void master(int v, int wrkrcount, ifstream &in) {
                  MPI_IN_PLACE, 0, MPI_INT,
                  0, MPI_COMM_WORLD);
 
-    // 3. send neighbors for each
-
+    // 4. send neighbors for each
     // calculate total number of neighbors to send to each worker
     vector<int> allnbrcounts(wrkrcount+1, 0);
     int curwrkr = 0;
@@ -78,14 +83,29 @@ void master(int v, int wrkrcount, ifstream &in) {
     MPI_Scatterv(adjlist.data(), allnbrcounts.data(), nbr_starts.data(), MPI_INT,
                  MPI_IN_PLACE, 0, MPI_INT,
                  0, MPI_COMM_WORLD);
+
+    // initialize components
+    vector<int> ids(v);
+    for (int i=0; i<v; i++) ids[i] = i;
+
+    // begin v-1 rounds of edge relaxing
+    for (int r=0; r<v-1; r++) {
+        // send component ids to all
+        MPI_Bcast(ids.data(), v, MPI_INT, 0, MPI_COMM_WORLD);
+    }
 }
 
-void worker(int rank) {
+void worker(int v, int rank) {
     int v_i;
     MPI_Scatter(NULL, 0, MPI_INT,
                 &v_i, 1, MPI_INT,
                 0, MPI_COMM_WORLD);
     cout << "rank " << rank << " v " << v_i << endl;
+
+    int first_v;
+    MPI_Scatter(NULL, 0, MPI_INT,
+                &first_v, 1, MPI_INT,
+                0, MPI_COMM_WORLD);
 
     vector<int> nbrcounts_i(v_i);
     MPI_Scatterv(NULL, NULL, NULL, MPI_INT,
@@ -107,6 +127,31 @@ void worker(int rank) {
     cout << "nbrs: ";
     for (int i : nbrs) cout << i << ' ';
     cout << endl;
+
+    // construct partial adjlist
+    vector<vector<int>> adjlist(v);
+    int cur_nbr = 0;
+    for (int i=0; i<v_i; i++) {
+        for (int j=0; j<nbrcounts_i[i]; j++) {
+            adjlist[i+first_v].push_back(nbrs[cur_nbr++]);
+        }
+    }
+
+    cout << "rank: " << rank << endl;
+    for (int i=0; i<v; i++) {
+        cout << i << ':';
+        for (int j : adjlist[i]) cout << j << ' ';
+        cout << endl;
+    }
+
+    // begin v-1 rounds
+    vector<int> ids(v);
+    for (int r=0; r<v-1; r++) {
+        // receive latest component ids
+        MPI_Bcast(ids.data(), v, MPI_INT, 0, MPI_COMM_WORLD);
+        for (int i : ids) cout << i << ' ';
+        cout << endl;
+    }
 }
 
 int main() {
@@ -133,7 +178,7 @@ int main() {
         MPI_Comm_size(MPI_COMM_WORLD, &size);
         master(v, size-1, in);
     } else {
-        worker(rank);
+        worker(v, rank);
     }
 
     MPI_Finalize();
