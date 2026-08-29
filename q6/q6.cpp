@@ -114,7 +114,7 @@ void master(int v, int wrkrcount, ifstream &in) {
                    MPI_MIN, 0, MPI_COMM_WORLD);
     }
 
-    ifstream out("out");
+    ofstream out("out");
     for (int i=0; i<v; i++) {
         out << i << ids[i] << '\n';
     }
