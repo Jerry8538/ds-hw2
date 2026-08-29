@@ -10,8 +10,8 @@ void master(int v, int wrkrcount, ifstream &in) {
 
     // input adjlist, and store number of nbrs, and offset for each worker
     vector<int> adjlist; // 1d for easy sending
-    vector<int> nbrcounts(v+1, 0);
-    for (int i=1; i<=v; i++) {
+    vector<int> nbrcounts(v);
+    for (int i=0; i<v; i++) {
         in >> nbrcounts[i];
         for (int j=0; j<nbrcounts[i]; j++) {
             int temp; in >> temp;
@@ -28,15 +28,23 @@ void master(int v, int wrkrcount, ifstream &in) {
     for (int i=1; i<=remainder; i++) {
         vcounts[i]++;
     }
+    cout << "vcounts: ";
+    for (int i : vcounts) cout << i << ' ';
+    cout << endl;
+
     MPI_Scatter(vcounts.data(), 1, MPI_INT, // send
                 MPI_IN_PLACE, 0, MPI_INT,   // recv
                 0, MPI_COMM_WORLD);
 
     // 2. send neighbor counts for each
-    vector<int> nbrcount_starts(wrkrcount+1, 0); // prefix sum of nbrcounts
+    vector<int> nbrcount_starts(wrkrcount+1, 0); // prefix sum of vcounts
     for (int i=1; i<=wrkrcount; i++) {
-        nbrcount_starts[i] = nbrcount_starts[i-1] + nbrcounts[i-1];
+        nbrcount_starts[i] = nbrcount_starts[i-1] + vcounts[i-1];
     }
+    cout << "nbrcounts: ";
+    for (int i : nbrcounts) cout << i << ' ';
+    cout << endl;
+
     MPI_Scatterv(nbrcounts.data(), vcounts.data(), nbrcount_starts.data(), MPI_INT,
                  MPI_IN_PLACE, 0, MPI_INT,
                  0, MPI_COMM_WORLD);
@@ -56,7 +64,11 @@ void master(int v, int wrkrcount, ifstream &in) {
             curwrkr_vcount = 0;
         }
         allnbrcounts[curwrkr] += nbrcount;
+        curwrkr_vcount++;
     }
+    cout << "allnbrcounts: ";
+    for (int i : allnbrcounts) cout << i << ' ';
+    cout << endl;
 
     vector<int> nbr_starts(wrkrcount+1, 0); // prefix of allnbrcounts
     for (int i=1; i<=wrkrcount; i++) {
@@ -125,4 +137,4 @@ int main() {
     }
 
     MPI_Finalize();
-
+}

@@ -1,5 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=q6
+#SBATCH -w "node01"
+##SBATCH -w "node04" # NODES 1 and 4 are the only ones without mca errors
 #SBATCH --ntasks=3
 #SBATCH --nodes=1
 #SBATCH --mem-per-cpu=4G
