@@ -105,7 +105,6 @@ void master(int v, int wrkrcount, ifstream &in) {
         cout << "ids: ";
         for (int i : ids) cout << i << ' ';
         cout << endl;
-        GOL
 
         // send component ids to all
         MPI_Bcast(ids.data(), v, MPI_INT, 0, MPI_COMM_WORLD);
@@ -113,6 +112,11 @@ void master(int v, int wrkrcount, ifstream &in) {
         // receive ids from all, then reduce with MIN
         MPI_Reduce(MPI_IN_PLACE, ids.data(), v, MPI_INT,
                    MPI_MIN, 0, MPI_COMM_WORLD);
+    }
+
+    ifstream out("out");
+    for (int i=0; i<v; i++) {
+        out << i << ids[i] << '\n';
     }
 }
 
@@ -140,6 +144,7 @@ void worker(int v, int rank) {
         totalnbrcount += i;
     }
 
+    // 4. receive nbrs (as a flat array)
     vector<int> nbrs(totalnbrcount);
     MPI_Scatterv(NULL, NULL, NULL, MPI_INT,
                  nbrs.data(), totalnbrcount, MPI_INT,
@@ -161,7 +166,6 @@ void worker(int v, int rank) {
         for (int j : adjlist[i]) cout << j << ' ';
         cout << endl;
     }
-    GOL
 
     // begin v-1 rounds
     vector<int> ids(v);
@@ -197,12 +201,23 @@ int main() {
     }
     MPI_Bcast(&v, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
+    // measuring the time
+    MPI_Barrier(MPI_COMM_WORLD);
+    double start_time = MPI_Wtime();
     if (rank == 0) {
         int size;
         MPI_Comm_size(MPI_COMM_WORLD, &size);
         master(v, size-1, in);
     } else {
         worker(v, rank);
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    double end_time = MPI_Wtime();
+
+    if (rank == 0) {
+        LOG("Time taken");
+        cout << end_time - start_time << "seconds\n";
     }
 
     MPI_Finalize();
