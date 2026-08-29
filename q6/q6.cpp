@@ -117,8 +117,7 @@ void master(int v, int wrkrcount, ifstream &in) {
 
         // check for early stopping
         int local_change = 0, change;
-        MPI_Allreduce(&local_change, &change, 1, MPI_INT, MPI_LOR,
-                      0, MPI_COMM_WORLD);
+        MPI_Allreduce(&local_change, &change, 1, MPI_INT, MPI_LOR, MPI_COMM_WORLD);
         if (!change) break;
     }
 
@@ -208,8 +207,7 @@ void worker(int v, int rank) {
             }
         }
         int change;
-        MPI_Allreduce(&local_change, &change, 1, MPI_INT, MPI_LOR,
-                      0, MPI_COMM_WORLD);
+        MPI_Allreduce(&local_change, &change, 1, MPI_INT, MPI_LOR, MPI_COMM_WORLD);
         if (!change) break;
     }
 }
