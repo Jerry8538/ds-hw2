@@ -1,9 +1,25 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <queue>
 #include <mpi.h>
 using namespace std;
 #define ll long long
+
+void bfs(int i, vector<vector<int>> &adjlist, vector<int> &ids) {
+    queue<int> q;
+    q.push(i);
+    while (!q.empty()) {
+        int u = q.front();
+        q.pop();
+        for (int v : adjlist[u]) {
+            if (ids[v] > u) {
+                ids[v] = u;
+                q.push(v);
+            }
+        }
+    }
+}
 
 void master(int v, int wrkrcount, ifstream &in) {
     // optimal to precompute the data to send, than to send repeatedly
@@ -90,8 +106,17 @@ void master(int v, int wrkrcount, ifstream &in) {
 
     // begin v-1 rounds of edge relaxing
     for (int r=0; r<v-1; r++) {
+        // LOGGING: current component ids
+        cout << "ids: ";
+        for (int i : ids) cout << i << ' ';
+        cout << endl;
+
         // send component ids to all
         MPI_Bcast(ids.data(), v, MPI_INT, 0, MPI_COMM_WORLD);
+
+        // receive ids from all, then reduce with MIN
+        MPI_Reduce(MPI_IN_PLACE, ids.data(), v, MPI_INT,
+                   MPI_MIN, 0, MPI_COMM_WORLD);
     }
 }
 
@@ -149,8 +174,14 @@ void worker(int v, int rank) {
     for (int r=0; r<v-1; r++) {
         // receive latest component ids
         MPI_Bcast(ids.data(), v, MPI_INT, 0, MPI_COMM_WORLD);
-        for (int i : ids) cout << i << ' ';
-        cout << endl;
+
+        // perform bfs on partial adjlist
+        for (int i=0; i<v; i++) {
+            bfs(i, adjlist, ids);
+        }
+
+        MPI_Reduce(ids.data(), NULL, v, MPI_INT,
+                   MPI_MIN, 0, MPI_COMM_WORLD);
     }
 }
 
