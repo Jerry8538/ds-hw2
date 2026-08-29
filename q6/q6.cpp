@@ -1,3 +1,8 @@
+// NOTES:
+// optimal to precompute the data to send, than to send repeatedly
+// label propagation is O(E/P * V), but the E/P happens in parallel
+// DSU would be O(E) but the union can only happen sequentially on master
+
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -5,6 +10,8 @@
 #include <mpi.h>
 using namespace std;
 #define ll long long
+#define LOG(x) cout << "=========\n" << x << endl;
+#define GOL cout << "=========\n";
 
 void bfs(int i, vector<vector<int>> &adjlist, vector<int> &ids) {
     queue<int> q;
@@ -22,8 +29,6 @@ void bfs(int i, vector<vector<int>> &adjlist, vector<int> &ids) {
 }
 
 void master(int v, int wrkrcount, ifstream &in) {
-    // optimal to precompute the data to send, than to send repeatedly
-
     // input adjlist, and store number of nbrs, and offset for each worker
     vector<int> adjlist; // 1d for easy sending
     vector<int> nbrcounts(v);
@@ -44,9 +49,6 @@ void master(int v, int wrkrcount, ifstream &in) {
     for (int i=1; i<=remainder; i++) {
         vcounts[i]++;
     }
-    cout << "vcounts: ";
-    for (int i : vcounts) cout << i << ' ';
-    cout << endl;
 
     MPI_Scatter(vcounts.data(), 1, MPI_INT, // send
                 MPI_IN_PLACE, 0, MPI_INT,   // recv
@@ -63,10 +65,6 @@ void master(int v, int wrkrcount, ifstream &in) {
                 0, MPI_COMM_WORLD);
 
     // 3. send neighbor counts for each
-    cout << "nbrcounts: ";
-    for (int i : nbrcounts) cout << i << ' ';
-    cout << endl;
-
     MPI_Scatterv(nbrcounts.data(), vcounts.data(), nbrcount_starts.data(), MPI_INT,
                  MPI_IN_PLACE, 0, MPI_INT,
                  0, MPI_COMM_WORLD);
@@ -87,9 +85,6 @@ void master(int v, int wrkrcount, ifstream &in) {
         allnbrcounts[curwrkr] += nbrcount;
         curwrkr_vcount++;
     }
-    cout << "allnbrcounts: ";
-    for (int i : allnbrcounts) cout << i << ' ';
-    cout << endl;
 
     vector<int> nbr_starts(wrkrcount+1, 0); // prefix of allnbrcounts
     for (int i=1; i<=wrkrcount; i++) {
@@ -106,10 +101,11 @@ void master(int v, int wrkrcount, ifstream &in) {
 
     // begin v-1 rounds of edge relaxing
     for (int r=0; r<v-1; r++) {
-        // LOGGING: current component ids
+        LOG("current component ids");
         cout << "ids: ";
         for (int i : ids) cout << i << ' ';
         cout << endl;
+        GOL
 
         // send component ids to all
         MPI_Bcast(ids.data(), v, MPI_INT, 0, MPI_COMM_WORLD);
@@ -121,37 +117,33 @@ void master(int v, int wrkrcount, ifstream &in) {
 }
 
 void worker(int v, int rank) {
+    // 1. receive number of vertices to work on
     int v_i;
     MPI_Scatter(NULL, 0, MPI_INT,
                 &v_i, 1, MPI_INT,
                 0, MPI_COMM_WORLD);
-    cout << "rank " << rank << " v " << v_i << endl;
 
+    // 2. receive first vertex's value (rest will be sequential increments)
     int first_v;
     MPI_Scatter(NULL, 0, MPI_INT,
                 &first_v, 1, MPI_INT,
                 0, MPI_COMM_WORLD);
 
+    // 3. receive number of neighbors for each vertex
     vector<int> nbrcounts_i(v_i);
     MPI_Scatterv(NULL, NULL, NULL, MPI_INT,
                  nbrcounts_i.data(), v_i, MPI_INT,
                  0, MPI_COMM_WORLD);
 
     int totalnbrcount = 0;
-    cout << "nbrcounts: ";
     for (int i : nbrcounts_i) {
-        cout << i << ' ';
         totalnbrcount += i;
     }
-    cout << endl;
 
     vector<int> nbrs(totalnbrcount);
     MPI_Scatterv(NULL, NULL, NULL, MPI_INT,
                  nbrs.data(), totalnbrcount, MPI_INT,
                  0, MPI_COMM_WORLD);
-    cout << "nbrs: ";
-    for (int i : nbrs) cout << i << ' ';
-    cout << endl;
 
     // construct partial adjlist
     vector<vector<int>> adjlist(v);
@@ -162,12 +154,14 @@ void worker(int v, int rank) {
         }
     }
 
+    LOG("partial adjlist for current worker");
     cout << "rank: " << rank << endl;
     for (int i=0; i<v; i++) {
         cout << i << ':';
         for (int j : adjlist[i]) cout << j << ' ';
         cout << endl;
     }
+    GOL
 
     // begin v-1 rounds
     vector<int> ids(v);
@@ -202,7 +196,6 @@ int main() {
         in >> v;
     }
     MPI_Bcast(&v, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    cout << "rank: " << rank << ' ' << v << endl;
 
     if (rank == 0) {
         int size;
