@@ -20,8 +20,8 @@ void bfs(int i, vector<vector<int>> &adjlist, vector<int> &ids) {
         int u = q.front();
         q.pop();
         for (int v : adjlist[u]) {
-            if (ids[v] > u) {
-                ids[v] = u;
+            if (ids[v] > ids[u]) {
+                ids[v] = ids[u];
                 q.push(v);
             }
         }
@@ -172,6 +172,11 @@ void worker(int v, int rank) {
     for (int r=0; r<v-1; r++) {
         // receive latest component ids
         MPI_Bcast(ids.data(), v, MPI_INT, 0, MPI_COMM_WORLD);
+
+        LOG("WORKER current component ids");
+        cout << "rank: " << rank << "ids: ";
+        for (int i : ids) cout << i << ' ';
+        cout << endl;
 
         // perform bfs on partial adjlist
         for (int i=0; i<v; i++) {
