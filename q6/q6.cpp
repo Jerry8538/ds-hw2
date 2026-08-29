@@ -124,7 +124,7 @@ void master(int v, int wrkrcount, ifstream &in) {
 
     ofstream out("out");
     for (int i=0; i<v; i++) {
-        out << i << ids[i] << '\n';
+        out << i << ' ' << ids[i] << '\n';
     }
 }
 
