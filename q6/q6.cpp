@@ -101,10 +101,12 @@ void master(int v, int wrkrcount, ifstream &in) {
 
     // begin v-1 rounds of edge relaxing
     for (int r=0; r<v-1; r++) {
+        /*
         LOG("current component ids");
         cout << "ids: ";
         for (int i : ids) cout << i << ' ';
         cout << endl;
+        */
 
         // send component ids to all
         MPI_Bcast(ids.data(), v, MPI_INT, 0, MPI_COMM_WORLD);
@@ -112,6 +114,12 @@ void master(int v, int wrkrcount, ifstream &in) {
         // receive ids from all, then reduce with MIN
         MPI_Reduce(MPI_IN_PLACE, ids.data(), v, MPI_INT,
                    MPI_MIN, 0, MPI_COMM_WORLD);
+
+        // check for early stopping
+        int local_change = 0, change;
+        MPI_Allreduce(&local_change, &change, 1, MPI_INT, MPI_LOR,
+                      0, MPI_COMM_WORLD);
+        if (!change) break;
     }
 
     ofstream out("out");
@@ -159,6 +167,7 @@ void worker(int v, int rank) {
         }
     }
 
+    /*
     LOG("partial adjlist for current worker");
     cout << "rank: " << rank << endl;
     for (int i=0; i<v; i++) {
@@ -166,17 +175,21 @@ void worker(int v, int rank) {
         for (int j : adjlist[i]) cout << j << ' ';
         cout << endl;
     }
+    */
 
     // begin v-1 rounds
-    vector<int> ids(v);
+    vector<int> ids(v), old_ids(v);
     for (int r=0; r<v-1; r++) {
         // receive latest component ids
+        old_ids = ids;
         MPI_Bcast(ids.data(), v, MPI_INT, 0, MPI_COMM_WORLD);
 
+        /*
         LOG("WORKER current component ids");
         cout << "rank: " << rank << "ids: ";
         for (int i : ids) cout << i << ' ';
         cout << endl;
+        */
 
         // perform bfs on partial adjlist
         for (int i=0; i<v; i++) {
@@ -185,6 +198,19 @@ void worker(int v, int rank) {
 
         MPI_Reduce(ids.data(), NULL, v, MPI_INT,
                    MPI_MIN, 0, MPI_COMM_WORLD);
+
+        // check for early stopping
+        int local_change = 0;
+        for (int i=0; i<v; i++) {
+            if (old_ids[i] != ids[i]) {
+                local_change = 1;
+                break;
+            }
+        }
+        int change;
+        MPI_Allreduce(&local_change, &change, 1, MPI_INT, MPI_LOR,
+                      0, MPI_COMM_WORLD);
+        if (!change) break;
     }
 }
 
