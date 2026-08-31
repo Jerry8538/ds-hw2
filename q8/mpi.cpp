@@ -91,8 +91,6 @@ int main(int argc, char **argv) {
     }
     MPI_Datatype measurementType = createMeasurementType();
 
-    fprintf(stderr, "rank=%d P=%d role=%s N=%d K=%d S=%d\n", rank, P, isMaster ? "MASTER" : "WORKER", N, K, S);
-
     // preparing the sendcounts and displs array for the scatterv function
     vector<int> sendcounts(P, 0);
     vector<int> displs(P, 0);
