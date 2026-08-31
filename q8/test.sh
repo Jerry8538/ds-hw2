@@ -68,8 +68,10 @@ echo ""
 # OpenMPI's default transport selection prints noisy warnings/fails to
 # init. --mca pml ob1 forces the standard point-to-point protocol instead,
 # and --mca osc ^ucx excludes UCX from one-sided communication selection.
+# --mca btl self,tcp excludes vader's CMA fast path too, which fails with
+# "Read -1, errno=1" on this cluster (ptrace_scope restrictions).
 echo "=== Running MPI (np=9) ==="
-{ time mpirun -np 9 --mca pml ob1 --mca osc ^ucx ./mpi_q8 < "$IN" > mpi_output.txt; } > mpi_time.txt 2>&1
+{ time mpirun -np 9 --mca pml ob1 --mca osc ^ucx --mca btl self,tcp ./mpi_q8 < "$IN" > mpi_output.txt; } > mpi_time.txt 2>&1
 cat mpi_time.txt
 echo ""
 

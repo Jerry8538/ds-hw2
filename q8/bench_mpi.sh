@@ -58,8 +58,11 @@ for N in "${SIZES[@]}"; do
     for P in "${PROC_COUNTS[@]}"; do
         echo "=== N=$N, P=$P ==="
         echo "--- P=$P ---" >> "$RESULTS"
-        # same UCX workaround as the other q8/q2/q6 scripts on this cluster
-        { time mpirun -np $P --mca pml ob1 --mca osc ^ucx ./mpi_q8 < "$IN" > /dev/null; } >> "$RESULTS" 2>&1
+        # same UCX workaround as the other q8/q2/q6 scripts on this cluster,
+        # plus --mca btl self,tcp (from q2/test_g1000.sh) to exclude vader's
+        # CMA fast path, which fails with "Read -1, errno=1" on this cluster
+        # (ptrace_scope restrictions) and falls back noisily otherwise
+        { time mpirun -np $P --mca pml ob1 --mca osc ^ucx --mca btl self,tcp ./mpi_q8 < "$IN" > /dev/null; } >> "$RESULTS" 2>&1
         echo "" >> "$RESULTS"
     done
 

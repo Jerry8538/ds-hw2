@@ -31,4 +31,4 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-mpirun -np $SLURM_NTASKS --mca pml ob1 --mca osc ^ucx ./mpi_q8 < "$IN"
+mpirun -np $SLURM_NTASKS --mca pml ob1 --mca osc ^ucx --mca btl self,tcp ./mpi_q8 < "$IN"
