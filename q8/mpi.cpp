@@ -61,6 +61,13 @@ const int tag_interval_counts = 18;
 int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
 
+    // same I/O optimization as sequential.cpp - only the master actually
+    // reads input, but this was missing here, so cin>> was paying full
+    // C-stream-sync overhead while parsing millions of records serially,
+    // which dominated total runtime regardless of process count.
+    ios_base::sync_with_stdio(false);
+    cin.tie(nullptr);
+
     int rank, P;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &P);

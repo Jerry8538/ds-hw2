@@ -86,6 +86,28 @@ This builds `sequential` and `mpi_q8`, runs both checks above at
 `P = 2, 4, 9`, and reports a final pass/fail summary (non-zero exit on
 any failure).
 
+### Known limitation: floating-point rounding at large N
+
+`sequential`'s summation isn't a single straight linear pass — it calls
+`runMasterWorkerSimulation()` with a fixed 8 logical workers, so it sums
+each of 8 partitions separately and merges them, same as the real MPI
+program does for actual workers. Floating-point addition isn't
+associative, so summing the same values in a different number of chunks
+(e.g. 1 chunk at real `P=2`, vs `sequential`'s fixed 8 chunks) can round
+differently in the last decimal place after millions of additions.
+
+In practice this is invisible at the small `testcases/` sizes
+`verify_correctness.sh` uses, and `P=9` (8 real workers) always matches
+`sequential` exactly, since the partition shape is identical. But at
+large N (observed at N=2,000,000) sums like `TOTAL_RAINFALL` can differ
+from `sequential`'s output by 1 in the last printed decimal digit at
+some other `P` values (e.g. `P=2`, `P=3`) — not a correctness bug, just
+expected floating-point non-associativity, and consistent with the
+assignment's own note that "where floating-point accumulation order can
+affect the final rounded value, use a deterministic strategy." Not
+fixed here (would require compensated/Kahan summation or an
+order-independent reduction); documented as a known limitation instead.
+
 ## Architecture notes
 
 - `P` always means the *total* number of MPI processes. Rank 0 is a
