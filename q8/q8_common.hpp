@@ -12,15 +12,22 @@ using namespace std;
 // timestamp station_id temperature humidity pressure rainfall wind_speed
 // this is how a measurement log is defined in the assignment, so making a struct for that
 
+// field order matters for MPI: station_id (4 bytes) is placed last, after
+// all the 8-byte fields, so there's no internal padding gap between members
+// (only trailing padding after station_id, to align the struct to 8 bytes).
+// that keeps the derived MPI datatype in mpi.cpp's createMeasurementType()
+// contiguous, so MPI can pack/unpack it with a straight memcpy instead of
+// per-field copies during MPI_Scatterv - this matters a lot at millions of
+// records. all field access elsewhere is by name (never positional
+// aggregate init), so this reordering doesn't affect anything else.
 struct Measurement {
     long long timestamp;
-    int station_id;
-
     double temperature;
     double humidity;
     double pressure;
     double rainfall;
     double wind_speed;
+    int station_id;
 };
 
 // for each station we will need the count of the measurements, temp_sum and rainfall_sum later to find the avg

@@ -10,8 +10,8 @@ MPI_Datatype createMeasurementType() {
     const int fieldCount = 7;
 
     int blockLengths[fieldCount] = {1, 1, 1, 1, 1, 1, 1}; // this is count for each field and it is 1 for all
-    MPI_Datatype fieldTypes[fieldCount] = { // field type of all the struct members
-        MPI_LONG_LONG, MPI_INT, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE
+    MPI_Datatype fieldTypes[fieldCount] = { // field type of all the struct members, in declaration order
+        MPI_LONG_LONG, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT
     };
 
     // this concept is really beautiful
@@ -22,15 +22,26 @@ MPI_Datatype createMeasurementType() {
 
     MPI_Get_address(&sample, &base);
     MPI_Get_address(&sample.timestamp, &addr);   displacements[0] = addr - base;
-    MPI_Get_address(&sample.station_id, &addr);  displacements[1] = addr - base;
-    MPI_Get_address(&sample.temperature, &addr); displacements[2] = addr - base;
-    MPI_Get_address(&sample.humidity, &addr);    displacements[3] = addr - base;
-    MPI_Get_address(&sample.pressure, &addr);    displacements[4] = addr - base;
-    MPI_Get_address(&sample.rainfall, &addr);    displacements[5] = addr - base;
-    MPI_Get_address(&sample.wind_speed, &addr);  displacements[6] = addr - base;
+    MPI_Get_address(&sample.temperature, &addr); displacements[1] = addr - base;
+    MPI_Get_address(&sample.humidity, &addr);    displacements[2] = addr - base;
+    MPI_Get_address(&sample.pressure, &addr);    displacements[3] = addr - base;
+    MPI_Get_address(&sample.rainfall, &addr);    displacements[4] = addr - base;
+    MPI_Get_address(&sample.wind_speed, &addr);  displacements[5] = addr - base;
+    MPI_Get_address(&sample.station_id, &addr);  displacements[6] = addr - base;
 
+    MPI_Datatype structType;
+    MPI_Type_create_struct(fieldCount, blockLengths, displacements, fieldTypes, &structType);
+
+    // station_id (the last field) ends at offset 52, but sizeof(Measurement)
+    // is 56 because the struct is padded to its 8-byte alignment - without
+    // resizing, MPI would think each element is only 52 bytes apart and
+    // step through a vector<Measurement> array with the wrong stride,
+    // silently reading garbage past the first element. resizing the type's
+    // extent to sizeof(Measurement) makes it match the real array layout.
     MPI_Datatype measurementType;
-    MPI_Type_create_struct(fieldCount, blockLengths, displacements, fieldTypes, &measurementType);
+    MPI_Type_create_resized(structType, 0, sizeof(Measurement), &measurementType);
+    MPI_Type_free(&structType);
+
     MPI_Type_commit(&measurementType);
     return measurementType;
 }
