@@ -33,6 +33,6 @@ if [ $? -ne 0 ]; then
 fi
 
 mkdir -p output
-mpirun -np $SLURM_NTASKS --mca pml ob1 --mca osc ^ucx --mca btl self,tcp ./mpi_q8 < "$IN" > "$OUT"
+mpirun -np $SLURM_NTASKS --mca pml ob1 --mca osc ^ucx --mca btl vader,self --mca btl_vader_single_copy_mechanism none ./mpi_q8 < "$IN" > "$OUT"
 
 echo "Output written to $OUT" >&2

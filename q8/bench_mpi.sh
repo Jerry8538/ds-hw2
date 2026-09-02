@@ -58,11 +58,13 @@ for N in "${SIZES[@]}"; do
     for P in "${PROC_COUNTS[@]}"; do
         echo "=== N=$N, P=$P ==="
         echo "--- P=$P ---" >> "$RESULTS"
-        # same UCX workaround as the other q8/q2/q6 scripts on this cluster,
-        # plus --mca btl self,tcp (from q2/test_g1000.sh) to exclude vader's
-        # CMA fast path, which fails with "Read -1, errno=1" on this cluster
-        # (ptrace_scope restrictions) and falls back noisily otherwise
-        { time mpirun -np $P --mca pml ob1 --mca osc ^ucx --mca btl self,tcp ./mpi_q8 < "$IN" > /dev/null; } >> "$RESULTS" 2>&1
+        # same UCX workaround as the other q8/q2/q6 scripts on this cluster.
+        # btl vader,self with single_copy_mechanism=none keeps scatter/gather
+        # on shared memory (fast) instead of forcing TCP loopback (slow) -
+        # vader's default CMA single-copy path fails with "Read -1, errno=1"
+        # on this cluster (ptrace_scope restrictions), but the non-CMA
+        # (double-copy) vader path doesn't need CMA at all and still beats TCP.
+        { time mpirun -np $P --mca pml ob1 --mca osc ^ucx --mca btl vader,self --mca btl_vader_single_copy_mechanism none ./mpi_q8 < "$IN" > /dev/null; } >> "$RESULTS" 2>&1
         echo "" >> "$RESULTS"
     done
 
