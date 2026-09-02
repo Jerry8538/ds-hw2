@@ -3,7 +3,7 @@
 #SBATCH --ntasks=9
 #SBATCH --nodes=1
 #SBATCH --mem-per-cpu=4G
-#SBATCH --time=02:00:00
+#SBATCH --time=04:00:00
 #SBATCH --output=%j.log
 #SBATCH --error=%j.err
 #SBATCH --mail-type=END,FAIL
@@ -45,7 +45,7 @@ SEED=42
 # 1, 2, 4, 8 workers - doubling worker counts, same P values q2 benchmarks with
 PROC_COUNTS=(2 3 5 9)
 
-SIZES=(100 1000 10000 100000 1000000)
+SIZES=(100 1000 10000 100000 1000000 20000000)
 
 IN=bench_input.txt
 
