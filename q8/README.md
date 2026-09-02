@@ -127,34 +127,6 @@ order-independent reduction); documented as a known limitation instead.
   arrays and merges it with the same `mergingWorkerProcessStats()` the
   sequential version uses — no separate MPI-side merge logic.
 
-## Future improvements (not part of the graded deliverable)
-
-Benchmarking showed the master's serial `cin >>` parse of the entire
-input (before `MPI_Scatterv` even starts) dominates wall-clock time at
-every process count — `mpi.cpp`'s real time is nearly flat across
-`P=2,3,5` at large N, since that fixed serial parse caps how much
-speedup more workers can give (Amdahl's law).
-
-`mpi_opti_try.cpp` explores the fix: instead of the master reading+parsing
-everything then scattering it, every worker independently opens the input
-file and reads only its own byte-range directly off disk in parallel
-(input distribution is free-form per the TA clarification), so only the
-small aggregated `Stats` results cross MPI. This requires passing the
-input as a real file path argument (`./mpi_opti_try <file>`) rather than
-piping via stdin, since MPI doesn't reliably forward stdin to every rank.
-
-Locally verified (not yet cluster-benchmarked): diffed against
-`sequential` across the full `testcases/` set at `P = 2, 3, 4, 5, 9`
-(80/80 match byte-for-byte), plus `TOTAL_MEASUREMENTS` checked to match
-exactly at `data_10M.txt` for every tested P (confirms no records are
-lost or duplicated by the byte-range boundary logic — the only
-divergence there is the same floating-point summation-order rounding
-already documented above, not a bug). `bench_mpi_opti_try.sh` runs the
-same benchmark config as `bench_mpi.sh` (same K/S/seed/sizes/process
-counts) against this variant, logging to
-`output/mpi_opti_try_benchmark.log` for direct comparison — not yet run
-on the cluster.
-
 ## Status
 
 Benchmarking (execution time across input sizes/process counts,
