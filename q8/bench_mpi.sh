@@ -17,6 +17,8 @@ echo "SLURM Job ID: $SLURM_JOB_ID"
 echo "Allocated nodes: $SLURM_NNODES"
 echo "Total tasks: $SLURM_NTASKS"
 echo "Node list: $SLURM_NODELIST"
+echo "CPUs allocated to this job (SLURM_JOB_CPUS_PER_NODE): $SLURM_JOB_CPUS_PER_NODE"
+echo "CPUs visible to this shell (nproc): $(nproc)"
 echo "========================================="
 echo ""
 
