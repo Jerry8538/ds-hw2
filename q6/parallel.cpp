@@ -188,6 +188,9 @@ void worker(int v, int rank) {
     }
     */
 
+    // For measuring time in master
+    MPI_Barrier(MPI_COMM_WORLD);
+
     // begin v-1 rounds
     vector<int> ids(v), old_ids(v);
     for (int r=0; r<v-1; r++) {
@@ -222,6 +225,8 @@ void worker(int v, int rank) {
         MPI_Allreduce(&local_change, &change, 1, MPI_INT, MPI_LOR, MPI_COMM_WORLD);
         if (!change) break;
     }
+    // For measuring time in master
+    MPI_Barrier(MPI_COMM_WORLD);
 }
 
 int main() {
