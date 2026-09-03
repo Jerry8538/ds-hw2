@@ -6,7 +6,7 @@ mem="4G"
 
 cd seqpath3
 name="sequential"
-sbatch --job-name=$name --ntasks=1 --mem-per-cpu=$mem --output=%x-%j.log --error=%x-%j.err test.sh ~/ds-hw2/q6/parallel.cpp
+sbatch --job-name=$name --ntasks=1 --mem-per-cpu=$mem --output=%x-%j.log --error=%x-%j.err test.sh ~/ds-hw2/q6/sequential.cpp
 name="parallel"
 for cores in 3 5 9 17; do
     sbatch --job-name=$name --ntasks=$cores --mem-per-cpu=$mem --output=%x-$cores-%j.log --error=%x-$cores-%j.err test.sh ~/ds-hw2/q6/parallel.cpp
