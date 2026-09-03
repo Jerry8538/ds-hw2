@@ -136,7 +136,7 @@ void master(int v, int wrkrcount, ifstream &in) {
     double end_time = MPI_Wtime();
 
     LOG("Time taken");
-    cout << end_time - start_time << "seconds\n";
+    cout << end_time - start_time << " seconds\n";
 }
 
 void worker(int v, int rank) {
