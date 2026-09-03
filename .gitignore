@@ -4,3 +4,20 @@ q2/output/*
 
 q6/in
 q6/a.out
+
+q8/in
+q8/a.out
+q8/output/*
+q8/logs_seq/*
+q8/*.o
+q8/__pycache__/*
+q8/*.md
+!q8/README.md
+q8/testcases/data_*.txt
+q8/*.pdf
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
