@@ -72,6 +72,9 @@ int main(int argc, char **argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &P);
 
+    double t_start = MPI_Wtime();
+    double read_time = 0.0, scatter_time = 0.0, compute_time = 0.0, gather_merge_time = 0.0;
+
     if(P < 2){
         // this is invalid as per our design decision
         fprintf(stderr, "Error: P must be at least 2\n");
@@ -124,6 +127,7 @@ int main(int argc, char **argv) {
     // first lets get the input data using master
     vector<Measurement> inputData;
     if(isMaster){
+        double t_read_start = MPI_Wtime();
         inputData.resize(N);
         for (int i = 0; i < N; i++) {
             cin >> inputData[i].timestamp
@@ -134,19 +138,24 @@ int main(int argc, char **argv) {
                 >> inputData[i].rainfall
                 >> inputData[i].wind_speed;
         }
+        read_time = MPI_Wtime() - t_read_start;
     }
 
     int localDataCount = sendcounts[rank];
     vector<Measurement> localData(localDataCount);
 
+    double t_scatter_start = MPI_Wtime();
     MPI_Scatterv(isMaster ? inputData.data() : nullptr, sendcounts.data(), displs.data(), measurementType, localData.data(), localDataCount, measurementType, 0, MPI_COMM_WORLD);
+    scatter_time = MPI_Wtime() - t_scatter_start;
 
     MPI_Type_free(&measurementType);
 
     // now that wach worker has got its share of data, let them do their computation
     Stats localStats(S);
     if (!isMaster) {
+        double t_compute_start = MPI_Wtime();
         localStats = computeRangeOnWorker(localData, 0, localDataCount, S);
+        compute_time = MPI_Wtime() - t_compute_start;
     }
 
     // this is the global state of all the stations which we will keep updating using the localstats that we receive from all the distributed processes
@@ -222,6 +231,7 @@ int main(int argc, char **argv) {
     }
 
     if (isMaster) {
+        double t_gather_start = MPI_Wtime();
         for (int workerRank = 1; workerRank < P; workerRank++) {
             // this part is basically just receiving all the things that we send
             long long long_long_values_array[5];
@@ -281,8 +291,27 @@ int main(int argc, char **argv) {
 
             mergingWorkerProcessStats(globalStats, workerStats);
         }
+        gather_merge_time = MPI_Wtime() - t_gather_start;
 
         printResults(globalStats, K);
+    }
+
+    // timing breakdown, one single summary line (not one per rank), to
+    // stderr only - never touches the required stdout output. read_input
+    // and gather_merge only ever happen on the master, so its own value is
+    // already the right number. scatter and compute happen on every rank,
+    // so we take the max across all ranks - that's the one that actually
+    // sets the critical path/wall-clock time (a scatter time dominated by
+    // workers idle-waiting for the master to finish reading is exactly
+    // what we want visible here, not averaged away).
+    double max_scatter_time, max_compute_time;
+    MPI_Reduce(&scatter_time, &max_scatter_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&compute_time, &max_compute_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    if (isMaster) {
+        double total_time = MPI_Wtime() - t_start;
+        fprintf(stderr, "[N=%d P=%d] total=%.3fs read_input=%.3fs scatter=%.3fs compute=%.3fs gather_merge=%.3fs\n",
+                N, P, total_time, read_time, max_scatter_time, max_compute_time, gather_merge_time);
     }
 
     MPI_Finalize();
