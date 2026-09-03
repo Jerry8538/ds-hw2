@@ -1,8 +1,12 @@
 # script to manually run all benchmarks
 # run for both sequential and parallel versions of the program
+# test.sh needs to exist because sbatch needs to be passed a script (?)
 
 # TODO maybe the source of the slowdown?
 mem="4G"
+node="node01" # this and node04 are the only ones without mca errors
+
+module load openmpi/4.1.5
 
 echo "compiling"
 mpicxx -O2 -std=c++17 ~/ds-hw2/q6/sequential.cpp -o sequential
