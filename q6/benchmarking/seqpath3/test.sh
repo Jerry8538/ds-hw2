@@ -19,12 +19,4 @@ echo "Node list: $SLURM_NODELIST"
 echo "========================================="
 echo ""
 
-# Compile MPI program
-echo "Compiling MPI program..."
-mpicxx -O2 -std=c++17 $1
-if [ $? -ne 0 ]; then
-    echo "Compilation failed!"
-    exit 1
-fi
-
-mpirun a.out
+mpirun $1
