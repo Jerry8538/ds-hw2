@@ -22,6 +22,7 @@ void bfs(int i, vector<vector<int>> &adjlist, vector<int> &ids) {
 }
 
 int main() {
+    MPI_Init(NULL, NULL);
     ifstream in("in");
     int v; in >> v;
     vector<vector<int>> adjlist(v);
@@ -48,4 +49,5 @@ int main() {
     double end_time = MPI_Wtime();
     LOG("Time taken");
     cout << end_time - start_time << " seconds\n";
+    MPI_Finalize();
 }

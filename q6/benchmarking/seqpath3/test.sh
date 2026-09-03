@@ -27,22 +27,4 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# create input
-echo "creating input file"
-printf "" > in
-
-# number of vertices
-v=8
-printf "$v\n" >> in
-
-# adjacency list
-printf "1 1\n" >> in
-printf "2 0 2\n" >> in
-printf "2 1 3\n" >> in
-printf "2 2 4\n" >> in
-printf "2 3 5\n" >> in
-printf "2 4 6\n" >> in
-printf "2 5 7\n" >> in
-printf "1 6" >> in
-
 mpirun a.out
