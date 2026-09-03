@@ -2,6 +2,8 @@
 // optimal to precompute the data to send, than to send repeatedly
 // label propagation is O(E/P * V), but the E/P happens in parallel
 // DSU would be O(E) but the union can only happen sequentially on master
+// early stopping: in most cases, diameter will not be O(V)
+// checking for changes at worker parallelizes it; faster than all at master
 
 #include <iostream>
 #include <fstream>
@@ -95,6 +97,10 @@ void master(int v, int wrkrcount, ifstream &in) {
                  MPI_IN_PLACE, 0, MPI_INT,
                  0, MPI_COMM_WORLD);
 
+    // measuring the time
+    MPI_Barrier(MPI_COMM_WORLD);
+    double start_time = MPI_Wtime();
+
     // initialize components
     vector<int> ids(v);
     for (int i=0; i<v; i++) ids[i] = i;
@@ -125,6 +131,12 @@ void master(int v, int wrkrcount, ifstream &in) {
     for (int i=0; i<v; i++) {
         out << i << ' ' << ids[i] << '\n';
     }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    double end_time = MPI_Wtime();
+
+    LOG("Time taken");
+    cout << end_time - start_time << "seconds\n";
 }
 
 void worker(int v, int rank) {
@@ -230,23 +242,12 @@ int main() {
     }
     MPI_Bcast(&v, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-    // measuring the time
-    MPI_Barrier(MPI_COMM_WORLD);
-    double start_time = MPI_Wtime();
     if (rank == 0) {
         int size;
         MPI_Comm_size(MPI_COMM_WORLD, &size);
         master(v, size-1, in);
     } else {
         worker(v, rank);
-    }
-
-    MPI_Barrier(MPI_COMM_WORLD);
-    double end_time = MPI_Wtime();
-
-    if (rank == 0) {
-        LOG("Time taken");
-        cout << end_time - start_time << "seconds\n";
     }
 
     MPI_Finalize();

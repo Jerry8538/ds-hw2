@@ -9,8 +9,8 @@
 #SBATCH --output=%j.log
 #SBATCH --error=%j.err
 #SBATCH --mail-type=END,FAIL
-##SBATCH --mail-user=yash.khator@students.iiit.ac.in
-#SBATCH -D /home/cs3401.49/ds-hw2/q6
+#SBATCH --mail-user=yash.khator@students.iiit.ac.in
+#SBATCH -D /home/cs3401.49/ds-hw2/q6/roadNet-CA
 
 # Load necessary modules
 # module load hpcx-2.7.0/hpcx-ompi TODO FUCKER DOESNT GET PAST INIT
@@ -26,28 +26,10 @@ echo ""
 
 # Compile MPI program
 echo "Compiling MPI program..."
-mpicxx -O2 -std=c++17 q6.cpp
+mpicxx -O2 -std=c++17 ../q6.cpp
 if [ $? -ne 0 ]; then
     echo "Compilation failed!"
     exit 1
 fi
-
-# create input
-echo "creating input file"
-printf "" > in
-
-# number of vertices
-v=8
-printf "$v\n" >> in
-
-# adjacency list
-printf "1 1\n" >> in
-printf "2 0 2\n" >> in
-printf "2 1 3\n" >> in
-printf "2 2 4\n" >> in
-printf "2 3 5\n" >> in
-printf "2 4 6\n" >> in
-printf "2 5 7\n" >> in
-printf "1 6" >> in
 
 mpirun a.out
