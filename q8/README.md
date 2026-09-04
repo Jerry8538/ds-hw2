@@ -11,12 +11,35 @@ measurements.
 | File | Purpose |
 |---|---|
 | `q8_common.hpp` / `q8_common.cpp` | Shared analytics: `Measurement`/`Stats` structs, `updateStats()`, `mergingWorkerProcessStats()`, Top-K, output formatting. Used unchanged by both implementations. |
-| `sequential.cpp` | Single-process entry point. Simulates a 1-master + 8-worker decomposition on one OS process (see PLAN.md). |
+| `sequential.cpp` | Single-process entry point. Simulates a 1-master + 8-worker decomposition on one OS process (see `PLAN.md`). |
 | `mpi.cpp` | Real MPI entry point. Rank 0 is the master; ranks `1..P-1` are workers. |
 | `generate_dataset.py` | Reproducible dataset generator (fixed seed). |
+| `run_testcase.sh` | SLURM batch script: builds `mpi_q8` and runs it on one testcase at `P = 9`. |
+| `test.sh` | SLURM smoke test: builds both binaries, runs a small inline 10-record input through each, diffs the two outputs. Confirms the cluster's MPI/network setup actually works before running the real benchmarks — not a substitute for `verify_correctness.sh`. |
 | `verify_correctness.sh` | One-shot script: builds everything, diffs sequential output against hand-verified expected output, then diffs MPI output against sequential output across multiple process counts and every testcase. |
-| `testcases/` | Self-generated correctness inputs (no official sample I/O exists for Q8 — confirmed absent from the assignment PDF and by TA clarification) plus larger generated datasets for benchmarking. |
+| `bench_sequential_cluster.sh` | SLURM batch script: benchmarks `sequential` across N = 100 .. 20,000,000, writes timings to `output/sequential_benchmark.log`. |
+| `bench_mpi.sh` | SLURM batch script: benchmarks `mpi_q8` across the same N values and `P = 2, 3, 5, 9`, writes timings to `output/mpi_benchmark.log`. |
+| `testcases/` | Self-generated correctness inputs (no official sample I/O exists for Q8 — confirmed absent from the assignment PDF and by TA clarification) plus larger generated datasets (`data_100.txt` .. `data_20M.txt`) used for benchmarking. |
 | `testcases/expected/` | Hand-verified expected output for a curated set of testcases, one per required tie-break rule / edge case. |
+| `output/` | Program stdout captured from real runs: per-testcase output from `run_testcase.sh`, and `sequential_benchmark.log`/`mpi_benchmark.log` from the two bench scripts. |
+| `logs_seq/` | Informal local `time` output from running `sequential` directly on each `testcases/data_*.txt` size — a rough cross-check, not the formal benchmark harness (that's `bench_sequential_cluster.sh`). |
+| `Home_Work_2.pdf` | Full assignment PDF (general instructions + Q8 spec). |
+
+## Quick start on the cluster: using the scripts instead of compiling/running by hand
+
+Every script below compiles whatever it needs itself and applies the
+right cluster MPI flags — you don't need to run `g++`/`mpicxx`/`mpirun`
+manually at all if you just want a result. All are SLURM batch scripts
+submitted with `sbatch`; see each script's own section further down for
+full details on its input/output.
+
+| Task | Command |
+|---|---|
+| Run one testcase through MPI | `sbatch run_testcase.sh <testcase-name>` |
+| Smoke-test the cluster's build/MPI setup | `sbatch test.sh` |
+| Verify sequential + MPI correctness | the `sbatch --wrap=...` command under "Running verify_correctness.sh on the cluster" below (it has no `#SBATCH` header of its own, so it can't be `sbatch`'d directly) |
+| Benchmark sequential | `sbatch bench_sequential_cluster.sh` |
+| Benchmark MPI | `sbatch bench_mpi.sh` |
 
 ## Compilation
 
@@ -24,6 +47,18 @@ measurements.
 g++ -std=c++17 -O2 sequential.cpp q8_common.cpp -o sequential
 mpicxx -std=c++17 -O2 mpi.cpp q8_common.cpp -o mpi_q8
 ```
+
+**On the cluster**, `mpicxx`/`mpirun` aren't on `PATH` until the OpenMPI
+module is loaded — compiling by hand without this first fails with
+`mpicxx: command not found`:
+
+```bash
+module load openmpi/4.1.5
+```
+
+(Every script in this repo already does this `module load` itself before
+compiling, so this only matters if you're running the compile command
+interactively/by hand.)
 
 ## Execution
 
@@ -45,7 +80,44 @@ mpirun -np <P> ./mpi_q8 < input.txt > output.txt
 
 `P` is the **total** number of MPI processes (rank 0 = master, ranks
 `1..P-1` = workers, so `P` must be at least 2). Only rank 0 writes the
-required output to stdout.
+required output to stdout. Check the result with:
+
+```bash
+cat output.txt
+```
+
+### Running a testcase on the cluster (`run_testcase.sh`)
+
+```bash
+sbatch run_testcase.sh <testcase-name>
+```
+
+`<testcase-name>` selects the input file `testcases/<testcase-name>.txt`
+(name only, no `.txt`); it defaults to `test_sample_input` if omitted. The
+script always runs at `P = 9` (`--ntasks=9`). Output is written to
+`output/<testcase-name>.txt`; SLURM/compile/mpirun logs go to `%j.log`/
+`%j.err` instead, so `output/` always holds just the program's required
+stdout. Check the result with:
+
+```bash
+cat output/<testcase-name>.txt
+```
+
+### Smoke-testing the cluster setup (`test.sh`)
+
+```bash
+sbatch test.sh
+```
+
+Builds both binaries, generates a small 10-record input inline (not read
+from `testcases/`, so this doesn't depend on what's synced to the
+cluster), runs it through `./sequential` (writing `seq_output.txt`) and
+`mpirun -np 9 ./mpi_q8` with the cluster's UCX/vader MCA workaround flags
+(writing `mpi_output.txt`), then diffs the two. This just confirms the
+cluster's compiler/MPI/network stack works end-to-end — the real
+correctness check is `verify_correctness.sh`. Check the result in
+`%j.log`, which prints `PASS: MPI output matches sequential output` or
+`FAIL` with the diff.
 
 ## Dataset generation
 
@@ -55,7 +127,12 @@ python3 generate_dataset.py --n 1000 --k 5 --s 20 --seed 42 --out data.txt
 
 Fixed seed (`42` by default) makes generation reproducible. Value ranges
 and other generation assumptions are documented in the script's header
-comment.
+comment. Check the output with:
+
+```bash
+head -1 data.txt   # should read "1000 5 20"
+wc -l data.txt      # should be 1001 (header + N data lines)
+```
 
 ## Correctness verification
 
@@ -84,7 +161,29 @@ Run everything with:
 
 This builds `sequential` and `mpi_q8`, runs both checks above at
 `P = 2, 4, 9`, and reports a final pass/fail summary (non-zero exit on
-any failure).
+any failure) directly to the terminal — that printed `PASS`/`FAIL` per
+testcase plus the final `VERIFICATION: PASSED`/`FAILED` line **is** the
+output to check; there's no separate output file for a local run.
+
+### Running verify_correctness.sh on the cluster
+
+`verify_correctness.sh` has no `#SBATCH` header of its own and calls
+`mpirun` directly, so it needs `module load` plus the same MCA workaround
+flags `test.sh`/`run_testcase.sh` use on this cluster (UCX isn't
+installed; vader's default CMA path fails with a `ptrace_scope` error).
+Submit it as a batch job, exporting those flags as `OMPI_MCA_*`
+environment variables so every `mpirun` call inside the script picks them
+up without editing it:
+
+```bash
+sbatch --job-name=q8-verify --ntasks=9 --nodes=1 --mem-per-cpu=4G --time=00:30:00 \
+  --output=%j.log --error=%j.err \
+  --wrap="module load openmpi/4.1.5 && export OMPI_MCA_pml=ob1 OMPI_MCA_osc=^ucx OMPI_MCA_btl=vader,self OMPI_MCA_btl_vader_single_copy_mechanism=none && ./verify_correctness.sh"
+```
+
+Check the result in `%j.log` (the script's PASS/FAIL lines and final
+`VERIFICATION: PASSED`/`FAILED` summary go to stdout, which SLURM
+redirects there) — `%j.err` only carries SLURM/module noise.
 
 ### Known limitation: floating-point rounding at large N
 
@@ -127,9 +226,58 @@ order-independent reduction); documented as a known limitation instead.
   arrays and merges it with the same `mergingWorkerProcessStats()` the
   sequential version uses — no separate MPI-side merge logic.
 
-## Status
+## Benchmarking
 
-Benchmarking (execution time across input sizes/process counts,
-speedup/efficiency plots, and the communication-vs-computation analysis)
-is not yet included in this README — that section will be added once
-benchmarking is complete.
+Two SLURM batch scripts benchmark the two implementations on identical
+hardware and identical data (same `K=10 S=100 seed=42`, same six input
+sizes N = 100, 1,000, 10,000, 100,000, 1,000,000, 20,000,000), so their
+timings are directly comparable for speedup/efficiency.
+
+### Sequential (`bench_sequential_cluster.sh`)
+
+```bash
+sbatch bench_sequential_cluster.sh
+```
+
+For each size: generates the input with `generate_dataset.py`, times
+`./sequential < input > /dev/null` with the shell's `time`, then deletes
+the input before moving to the next size (so disk usage stays bounded at
+large N). Results accumulate in `output/sequential_benchmark.log`, one
+`N=... K=... S=... seed=...` header line followed by a `real`/`user`/
+`sys` block per size. `%j.log` mirrors the same progress echoes;
+`%j.err` carries only SLURM/compile stderr.
+
+### MPI (`bench_mpi.sh`)
+
+```bash
+sbatch bench_mpi.sh
+```
+
+Same structure, but for each size it also loops over `P = 2, 3, 5, 9`
+(i.e. 1, 2, 4, 8 workers, doubling worker counts each step), running
+`mpirun -np $P` with the cluster's UCX/vader MCA workaround flags each
+time, timed the same way. Results accumulate in
+`output/mpi_benchmark.log`, one `N=...` block containing a `--- P=... ---`
+sub-block per process count.
+
+### Checking the results
+
+```bash
+cat output/sequential_benchmark.log
+cat output/mpi_benchmark.log
+```
+
+Each block's `real` line is the wall-clock time to use for speedup
+(`T_sequential(N) / T_mpi(N, P)`) and efficiency
+(`speedup / (P - 1)`, since only `P - 1` ranks actually compute).
+
+### Status
+
+`output/sequential_benchmark.log` currently holds cluster timings through
+N=1,000,000 (the N=20,000,000 run didn't finish inside that job's time
+window); `logs_seq/*.log` has separate, informal local `time` runs of
+`sequential` on every `testcases/data_*.txt` size up to N=20,000,000, as
+a rough cross-check in the meantime. `mpi_q8` has not yet been
+benchmarked. Speedup/efficiency plots and the computation-vs-
+communication / data-distribution / scalability write-up are not yet in
+this README — they'll be added once both benchmark runs are complete.
