@@ -296,14 +296,6 @@ int main(int argc, char **argv) {
         printResults(globalStats, K);
     }
 
-    // timing breakdown, one single summary line (not one per rank), to
-    // stderr only - never touches the required stdout output. read_input
-    // and gather_merge only ever happen on the master, so its own value is
-    // already the right number. scatter and compute happen on every rank,
-    // so we take the max across all ranks - that's the one that actually
-    // sets the critical path/wall-clock time (a scatter time dominated by
-    // workers idle-waiting for the master to finish reading is exactly
-    // what we want visible here, not averaged away).
     double max_scatter_time, max_compute_time;
     MPI_Reduce(&scatter_time, &max_scatter_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(&compute_time, &max_compute_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
