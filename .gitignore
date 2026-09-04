@@ -4,6 +4,11 @@ q2/output/*
 
 q6/in
 q6/a.out
+q6/benchmarking/sequential
+q6/benchmarking/parallel
+q6/benchmarking/*/*log
+q6/benchmarking/*/*err
+q6/benchmarking/*/*out
 
 q8/in
 q8/a.out
@@ -19,6 +24,8 @@ q8/*.md
 !q8/report_q8.md
 q8/testcases/data_*.txt
 q8/*.pdf
+q8/*log
+q8/*err
 
 # macOS
 .DS_Store

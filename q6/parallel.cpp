@@ -12,7 +12,7 @@
 #include <mpi.h>
 using namespace std;
 #define ll long long
-#define LOG(x) cout << x;
+#define LOG(x) cout << x << endl;
 #define GOL cout << "=========\n";
 
 void bfs(int i, vector<vector<int>> &adjlist, vector<int> &ids) {
@@ -105,6 +105,8 @@ void master(int v, int wrkrcount, ifstream &in) {
     vector<int> ids(v);
     for (int i=0; i<v; i++) ids[i] = i;
 
+    double comp_time = 0;
+
     // begin v-1 rounds of edge relaxing
     for (int r=0; r<v-1; r++) {
         /*
@@ -121,6 +123,12 @@ void master(int v, int wrkrcount, ifstream &in) {
         MPI_Reduce(MPI_IN_PLACE, ids.data(), v, MPI_INT,
                    MPI_MIN, 0, MPI_COMM_WORLD);
 
+        // receive computation time from all, then reduce with MAX
+        double cur_comp_time;
+        MPI_Reduce(MPI_IN_PLACE, &cur_comp_time, 1, MPI_DOUBLE,
+                   MPI_MAX, 0, MPI_COMM_WORLD);
+        comp_time += cur_comp_time;
+
         // check for early stopping
         int local_change = 0, change;
         MPI_Allreduce(&local_change, &change, 1, MPI_INT, MPI_LOR, MPI_COMM_WORLD);
@@ -136,7 +144,8 @@ void master(int v, int wrkrcount, ifstream &in) {
     double end_time = MPI_Wtime();
 
     LOG("Time taken");
-    cout << end_time - start_time << " seconds\n";
+    cout << "total time: " << end_time - start_time << " seconds\n";
+    cout << "computation time: " << comp_time << " seconds\n";
 }
 
 void worker(int v, int rank) {
@@ -198,6 +207,9 @@ void worker(int v, int rank) {
         old_ids = ids;
         MPI_Bcast(ids.data(), v, MPI_INT, 0, MPI_COMM_WORLD);
 
+        // measuring local computation time
+        double comp_begin = MPI_Wtime();
+
         /*
         LOG("WORKER current component ids");
         cout << "rank: " << rank << "ids: ";
@@ -210,8 +222,16 @@ void worker(int v, int rank) {
             bfs(i, adjlist, ids);
         }
 
+        // measuring local computation time
+        double comp_end = MPI_Wtime();
+
         MPI_Reduce(ids.data(), NULL, v, MPI_INT,
                    MPI_MIN, 0, MPI_COMM_WORLD);
+
+        // send local computation time to master
+        double comp_time = comp_end - comp_start;
+        MPI_Reduce(&comp_time, NULL, 1, MPI_DOUBLE,
+                   MPI_MAX, 0, MPI_COMM_WORLD);
 
         // check for early stopping
         int local_change = 0;
