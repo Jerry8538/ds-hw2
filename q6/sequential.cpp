@@ -4,7 +4,7 @@
 #include <queue>
 #include <mpi.h>
 using namespace std;
-#define LOG(x) cout << "=========\n" << x << endl;
+#define LOG(x) cout << x;
 
 void bfs(int i, vector<vector<int>> &adjlist, vector<int> &ids) {
     queue<int> q;

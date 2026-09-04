@@ -9,12 +9,7 @@
 # Load necessary modules
 module load openmpi/4.1.5
 
-echo "========================================="
-echo "SLURM Job ID: $SLURM_JOB_ID"
-echo "Allocated nodes: $SLURM_NNODES"
-echo "Total tasks: $SLURM_NTASKS"
-echo "Node list: $SLURM_NODELIST"
-echo "========================================="
 echo ""
+echo "Workers: $((SLURM_NTASKS-1))"
 
 mpirun $1

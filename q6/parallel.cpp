@@ -12,7 +12,7 @@
 #include <mpi.h>
 using namespace std;
 #define ll long long
-#define LOG(x) cout << "=========\n" << x << endl;
+#define LOG(x) cout << x;
 #define GOL cout << "=========\n";
 
 void bfs(int i, vector<vector<int>> &adjlist, vector<int> &ids) {
