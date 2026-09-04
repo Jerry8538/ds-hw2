@@ -218,7 +218,8 @@ void worker(int v, int rank) {
         */
 
         // perform bfs on partial adjlist
-        for (int i=0; i<v; i++) {
+        // OPTIMIZATION: ONLY ITERATE OVER ITS LOCAL VERTICES
+        for (int i=first_v; i<first_v + v_i; i++) {
             bfs(i, adjlist, ids);
         }
 
