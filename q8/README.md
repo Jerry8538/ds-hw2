@@ -17,11 +17,13 @@ measurements.
 | `run_testcase.sh` | SLURM batch script: builds `mpi_q8` and runs it on one testcase at `P = 9`. |
 | `test.sh` | SLURM smoke test: builds both binaries, runs a small inline 10-record input through each, diffs the two outputs. Confirms the cluster's MPI/network setup actually works before running the real benchmarks — not a substitute for `verify_correctness.sh`. |
 | `verify_correctness.sh` | One-shot script: builds everything, diffs sequential output against hand-verified expected output, then diffs MPI output against sequential output across multiple process counts and every testcase. |
-| `bench_sequential_cluster.sh` | SLURM batch script: benchmarks `sequential` across N = 100 .. 20,000,000, writes timings to `output/sequential_benchmark.log`. |
+| `bench_sequential_cluster.sh` | SLURM batch script: benchmarks `sequential` across N = 100 .. 50,000,000, writes timings to `output/sequential_benchmark.log`. |
 | `bench_mpi.sh` | SLURM batch script: benchmarks `mpi_q8` across the same N values and `P = 2, 3, 5, 9`, writes timings to `output/mpi_benchmark.log`. |
+| `report_q8.md` | The benchmark results write-up: runtime/speedup/efficiency tables and the reasoning behind them (why MPI is usually slower end-to-end, why compute alone scales well, the N=1,000,000 anomaly). |
+| `plots/` | Speedup, efficiency, runtime, and time-breakdown plots generated from `output/*.log`. |
 | `testcases/` | Self-generated correctness inputs (no official sample I/O exists for Q8 — confirmed absent from the assignment PDF and by TA clarification) plus larger generated datasets (`data_100.txt` .. `data_20M.txt`) used for benchmarking. |
 | `testcases/expected/` | Hand-verified expected output for a curated set of testcases, one per required tie-break rule / edge case. |
-| `output/` | Program stdout captured from real runs: per-testcase output from `run_testcase.sh`, and `sequential_benchmark.log`/`mpi_benchmark.log` from the two bench scripts. |
+| `output/` | `sequential_benchmark.log`/`mpi_benchmark.log` from the two bench scripts (tracked in git), plus any per-testcase output from `run_testcase.sh` (not tracked — regenerable). |
 | `logs_seq/` | Informal local `time` output from running `sequential` directly on each `testcases/data_*.txt` size — a rough cross-check, not the formal benchmark harness (that's `bench_sequential_cluster.sh`). |
 | `Home_Work_2.pdf` | Full assignment PDF (general instructions + Q8 spec). |
 
@@ -229,9 +231,10 @@ order-independent reduction); documented as a known limitation instead.
 ## Benchmarking
 
 Two SLURM batch scripts benchmark the two implementations on identical
-hardware and identical data (same `K=10 S=100 seed=42`, same six input
-sizes N = 100, 1,000, 10,000, 100,000, 1,000,000, 20,000,000), so their
-timings are directly comparable for speedup/efficiency.
+hardware and identical data (same `K=10 S=100 seed=42`, same seven input
+sizes N = 100, 1,000, 10,000, 100,000, 1,000,000, 20,000,000,
+50,000,000), so their timings are directly comparable for
+speedup/efficiency.
 
 ### Sequential (`bench_sequential_cluster.sh`)
 
@@ -271,13 +274,20 @@ Each block's `real` line is the wall-clock time to use for speedup
 (`T_sequential(N) / T_mpi(N, P)`) and efficiency
 (`speedup / (P - 1)`, since only `P - 1` ranks actually compute).
 
-### Status
+### Results, plots, and analysis
 
-`output/sequential_benchmark.log` currently holds cluster timings through
-N=1,000,000 (the N=20,000,000 run didn't finish inside that job's time
-window); `logs_seq/*.log` has separate, informal local `time` runs of
-`sequential` on every `testcases/data_*.txt` size up to N=20,000,000, as
-a rough cross-check in the meantime. `mpi_q8` has not yet been
-benchmarked. Speedup/efficiency plots and the computation-vs-
-communication / data-distribution / scalability write-up are not yet in
-this README — they'll be added once both benchmark runs are complete.
+Both logs are complete for all 7 sizes and all 4 process counts. The
+full write-up — runtime/speedup/efficiency tables, why MPI is usually
+*slower* than sequential end-to-end (a serial, rank-0-only input read is
+the bottleneck), why the actual counting logic scales almost perfectly
+once that's excluded, and the reasoning behind both — is in
+[`report_q8.md`](report_q8.md). Speedup/efficiency/breakdown
+plots are in [`plots/`](plots/).
+
+Headline result: the MPI implementation is correct and its compute
+phase scales close to linearly (~8x on 8 workers, once I/O is excluded),
+but end-to-end it only beats sequential at the two largest sizes
+(20M/50M records) and only with 4 or fewer workers — using all 8 workers
+is the slowest configuration at every size tested, because only rank 0
+reads the input and that step gets *worse*, not just non-parallel, as
+more workers are added. See `report_q8.md` for the full reasoning.
