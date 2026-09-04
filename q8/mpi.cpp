@@ -2,7 +2,6 @@
 #include <mpi.h>
 #include <cstdio>
 #include<iostream>
-#include <unistd.h>
 using namespace std;
 
 // this thing is complex but this will help us to write clean code, cause the other two methods i found are : 1. flatten the struct to a buffer array basically serialize it, then while receiving deserialize, but there will be millions of records, so this just doesn't feel correct and the second method was to send each data value individually, which also didn't seem correct to me
@@ -148,15 +147,6 @@ int main(int argc, char **argv) {
     double t_scatter_start = MPI_Wtime();
     MPI_Scatterv(isMaster ? inputData.data() : nullptr, sendcounts.data(), displs.data(), measurementType, localData.data(), localDataCount, measurementType, 0, MPI_COMM_WORLD);
     scatter_time = MPI_Wtime() - t_scatter_start;
-
-    // TEMP DEBUG - remove before final submission. Proves ranks are real,
-    // separate OS processes (distinct pid) actually doing distinct work
-    // (distinct localDataCount), not one process faking parallelism.
-    char procName[MPI_MAX_PROCESSOR_NAME];
-    int procNameLen;
-    MPI_Get_processor_name(procName, &procNameLen);
-    fprintf(stderr, "[DEBUG] rank %d/%d on host %s pid %d got %d records\n",
-            rank, P, procName, getpid(), localDataCount);
 
     MPI_Type_free(&measurementType);
 
