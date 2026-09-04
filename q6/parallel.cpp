@@ -124,7 +124,7 @@ void master(int v, int wrkrcount, ifstream &in) {
                    MPI_MIN, 0, MPI_COMM_WORLD);
 
         // receive computation time from all, then reduce with MAX
-        double cur_comp_time;
+        double cur_comp_time = 0;
         MPI_Reduce(MPI_IN_PLACE, &cur_comp_time, 1, MPI_DOUBLE,
                    MPI_MAX, 0, MPI_COMM_WORLD);
         comp_time += cur_comp_time;
@@ -208,7 +208,7 @@ void worker(int v, int rank) {
         MPI_Bcast(ids.data(), v, MPI_INT, 0, MPI_COMM_WORLD);
 
         // measuring local computation time
-        double comp_begin = MPI_Wtime();
+        double comp_start = MPI_Wtime();
 
         /*
         LOG("WORKER current component ids");
